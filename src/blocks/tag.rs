@@ -2,7 +2,7 @@ use yansi::{Color, Style};
 
 use crate::Log;
 
-/// A block that prints a line separator.
+/// A block that prints a tag.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TagBlock {
     tag: String,
@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::new(LogLevel::info()).tag_str("TAG");
+        let log = Log::info().tag_str("TAG");
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("= TAG"));
@@ -70,7 +70,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::new(LogLevel::info()).tag_str("TAG");
+        let log = Log::info().tag_str("TAG");
         let text = log.to_ansi_text();
 
         assert_eq!(

@@ -44,11 +44,11 @@ impl IndentBlock {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Log, LogLevel};
+    use crate::Log;
 
     #[test]
     fn test_plain() {
-        let log = Log::new(LogLevel::error()).indent(|log| log.plain_text_str("Plain\ntext"));
+        let log = Log::error().indent(|log| log.plain_text_str("Plain\ntext"));
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("    Plain\n    text"));
@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::new(LogLevel::error()).indent(|log| log.plain_text_str("Plain\ntext"));
+        let log = Log::error().indent(|log| log.plain_text_str("Plain\ntext"));
         let text = log.to_ansi_text();
 
         assert_eq!(text, format!("    Plain\n    text"));

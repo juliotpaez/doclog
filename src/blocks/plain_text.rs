@@ -38,11 +38,11 @@ impl PlainTextBlock {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Log, LogLevel};
+    use crate::Log;
 
     #[test]
     fn test_plain() {
-        let log = Log::new(LogLevel::error()).plain_text_str("This is\na test");
+        let log = Log::error().plain_text_str("This is\na test");
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("This is\na test"));
@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::new(LogLevel::info()).plain_text_str("This is\na test");
+        let log = Log::info().plain_text_str("This is\na test");
         let text = log.to_ansi_text();
 
         assert_eq!(text, format!("This is\na test"));

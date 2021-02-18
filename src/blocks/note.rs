@@ -3,7 +3,7 @@ use yansi::{Color, Style};
 use crate::utils::text::indent_text;
 use crate::Log;
 
-/// A block that prints a line separator.
+/// A block that prints a note.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NoteBlock {
     title: String,
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::new(LogLevel::info()).note_str("title\nmultiline1", "message\nmultiline2");
+        let log = Log::info().note_str("title\nmultiline1", "message\nmultiline2");
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("= title: message\n         multiline2"));
@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::new(LogLevel::info()).note_str("title\nmultiline1", "message\nmultiline2");
+        let log = Log::info().note_str("title\nmultiline1", "message\nmultiline2");
         let text = log.to_ansi_text();
 
         assert_eq!(

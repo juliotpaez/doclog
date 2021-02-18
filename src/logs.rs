@@ -2,7 +2,9 @@ use std::fs;
 use std::option::Option::Some;
 use std::path::Path;
 
-use crate::blocks::{IndentBlock, LogBlock, NoteBlock, PlainTextBlock, SeparatorBlock, TagBlock};
+use crate::blocks::{
+    IndentBlock, LogBlock, NoteBlock, PlainTextBlock, SeparatorBlock, TagBlock, TitleBlock,
+};
 use crate::{is_ansi_supported, LogLevel};
 
 /// A configured log.
@@ -17,12 +19,37 @@ impl Log {
     // CONSTRUCTORS -----------------------------------------------------------
 
     /// Builds a new log.
-    pub const fn new(level: LogLevel) -> Log {
+    pub fn new(level: LogLevel) -> Log {
         Log {
             level,
             blocks: Vec::new(),
             cause: None,
         }
+    }
+
+    /// Builds a new log with a trace level.
+    pub fn trace() -> Log {
+        Self::new(LogLevel::trace())
+    }
+
+    /// Builds a new log with a debug level.
+    pub fn debug() -> Log {
+        Self::new(LogLevel::debug())
+    }
+
+    /// Builds a new log with a info level.
+    pub fn info() -> Log {
+        Self::new(LogLevel::info())
+    }
+
+    /// Builds a new log with a warn level.
+    pub fn warn() -> Log {
+        Self::new(LogLevel::warn())
+    }
+
+    /// Builds a new log with a error level.
+    pub fn error() -> Log {
+        Self::new(LogLevel::error())
     }
 
     // GETTERS ----------------------------------------------------------------
@@ -155,6 +182,24 @@ impl Log {
         self.add_block(LogBlock::Note(NoteBlock::new(
             title.to_string(),
             message.to_string(),
+        )))
+    }
+
+    /// Adds a title block.
+    pub fn title(self, message: String, show_date: bool, show_thread: bool) -> Self {
+        self.add_block(LogBlock::Title(TitleBlock::new(
+            message,
+            show_date,
+            show_thread,
+        )))
+    }
+
+    /// Adds a title block.
+    pub fn title_str(self, message: &str, show_date: bool, show_thread: bool) -> Self {
+        self.add_block(LogBlock::Title(TitleBlock::new(
+            message.to_string(),
+            show_date,
+            show_thread,
         )))
     }
 

@@ -55,12 +55,12 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::new(LogLevel::info()).separator(0);
+        let log = Log::info().separator(0);
         let text = log.to_plain_text();
 
         assert_eq!(text, format!(""));
 
-        let log = Log::new(LogLevel::error()).separator(10);
+        let log = Log::error().separator(10);
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("──────────"));
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::new(LogLevel::info()).separator(0);
+        let log = Log::info().separator(0);
         let text = log.to_ansi_text();
 
         assert_eq!(
@@ -76,7 +76,7 @@ mod tests {
             format!("{}", Style::new(LogLevel::info().color()).bold().paint(""))
         );
 
-        let log = Log::new(LogLevel::error()).separator(10);
+        let log = Log::error().separator(10);
         let text = log.to_ansi_text();
 
         assert_eq!(

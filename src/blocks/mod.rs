@@ -3,6 +3,7 @@ pub use note::*;
 pub use plain_text::*;
 pub use separator::*;
 pub use tag::*;
+pub use title::*;
 
 use crate::Log;
 
@@ -11,6 +12,7 @@ mod note;
 mod plain_text;
 mod separator;
 mod tag;
+mod title;
 
 /// One block that belongs to a log.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -20,6 +22,7 @@ pub enum LogBlock {
     Indent(IndentBlock),
     Tag(TagBlock),
     Note(NoteBlock),
+    Title(TitleBlock),
 }
 
 impl LogBlock {
@@ -38,6 +41,9 @@ impl LogBlock {
                 block.to_text(log, in_ansi, buffer);
             }
             LogBlock::Note(block) => {
+                block.to_text(log, in_ansi, buffer);
+            }
+            LogBlock::Title(block) => {
                 block.to_text(log, in_ansi, buffer);
             }
         }
