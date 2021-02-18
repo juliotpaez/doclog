@@ -1,0 +1,58 @@
+/// A block that prints a plain text.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct PlainTextBlock {
+    message: String,
+}
+
+impl PlainTextBlock {
+    // CONSTRUCTORS -----------------------------------------------------------
+
+    pub fn new(message: String) -> PlainTextBlock {
+        PlainTextBlock { message }
+    }
+
+    // GETTERS ----------------------------------------------------------------
+
+    /// The message to print.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    // SETTERS ----------------------------------------------------------------
+
+    pub fn set_message(mut self, message: String) -> Self {
+        self.message = message;
+        self
+    }
+
+    // METHODS ----------------------------------------------------------------
+
+    pub(crate) fn to_text(&self, buffer: &mut String) {
+        buffer.push_str(self.message());
+    }
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use crate::{Log, LogLevel};
+
+    #[test]
+    fn test_plain() {
+        let log = Log::new(LogLevel::error()).plain_text_str("This is\na test");
+        let text = log.to_plain_text();
+
+        assert_eq!(text, format!("This is\na test"));
+    }
+
+    #[test]
+    fn test_ansi() {
+        let log = Log::new(LogLevel::info()).plain_text_str("This is\na test");
+        let text = log.to_ansi_text();
+
+        assert_eq!(text, format!("This is\na test"));
+    }
+}
