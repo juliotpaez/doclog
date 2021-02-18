@@ -1,0 +1,11 @@
+[package]
+name = "doclog"
+description = "A Rust log library based on Rust's compiler logs"
+version = "0.1.0"
+authors = ["Julio Treviño Páez <julio.tpaez@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+chrono = "0.4.19"
+lazy_static = "1.4.0"
+yansi = "0.5.0"
