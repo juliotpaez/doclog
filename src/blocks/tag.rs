@@ -1,5 +1,6 @@
 use yansi::{Color, Style};
 
+use crate::utils::text::remove_jump_lines;
 use crate::Log;
 
 /// A block that prints a tag.
@@ -18,13 +19,13 @@ impl TagBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The tag of the block.
-    pub fn tag(&self) -> &str {
+    pub fn get_tag(&self) -> &str {
         &self.tag
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn set_tag(mut self, tag: String) -> Self {
+    pub fn tag(mut self, tag: String) -> Self {
         self.tag = tag;
         self
     }
@@ -32,7 +33,7 @@ impl TagBlock {
     // METHODS ----------------------------------------------------------------
 
     pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
-        let tag = self.tag.lines().next().unwrap();
+        let tag = remove_jump_lines(&self.tag);
 
         if in_ansi {
             buffer.push_str(
@@ -45,7 +46,7 @@ impl TagBlock {
             );
         } else {
             buffer.push_str("= ");
-            buffer.push_str(tag);
+            buffer.push_str(tag.as_str());
         }
     }
 }

@@ -3,7 +3,8 @@ use std::option::Option::Some;
 use std::path::Path;
 
 use crate::blocks::{
-    IndentBlock, LogBlock, NoteBlock, PlainTextBlock, SeparatorBlock, TagBlock, TitleBlock,
+    IndentBlock, LogBlock, NoteBlock, PlainTextBlock, SeparatorBlock, StackBlock, TagBlock,
+    TitleBlock,
 };
 use crate::{is_ansi_supported, LogLevel};
 
@@ -137,6 +138,20 @@ impl Log {
         self
     }
 
+    /// Adds a title block.
+    pub fn title(self, message: String, show_date: bool, show_thread: bool) -> Self {
+        self.add_block(LogBlock::Title(TitleBlock::new(
+            message,
+            show_date,
+            show_thread,
+        )))
+    }
+
+    /// Adds a title block.
+    pub fn title_str(self, message: &str, show_date: bool, show_thread: bool) -> Self {
+        self.title(message.to_string(), show_date, show_thread)
+    }
+
     /// Adds a new plain text block.
     pub fn plain_text(self, text: String) -> Self {
         self.add_block(LogBlock::PlainText(PlainTextBlock::new(text)))
@@ -144,7 +159,7 @@ impl Log {
 
     /// Adds a new plain text block.
     pub fn plain_text_str(self, text: &str) -> Self {
-        self.add_block(LogBlock::PlainText(PlainTextBlock::new(text.to_string())))
+        self.plain_text(text.to_string())
     }
 
     /// Adds a separator block.
@@ -179,28 +194,25 @@ impl Log {
 
     /// Adds a note block.
     pub fn note_str(self, title: &str, message: &str) -> Self {
-        self.add_block(LogBlock::Note(NoteBlock::new(
-            title.to_string(),
-            message.to_string(),
-        )))
+        self.note(title.to_string(), message.to_string())
     }
 
-    /// Adds a title block.
-    pub fn title(self, message: String, show_date: bool, show_thread: bool) -> Self {
-        self.add_block(LogBlock::Title(TitleBlock::new(
-            message,
-            show_date,
-            show_thread,
-        )))
+    /// Adds a stack block.
+    pub fn stack<F>(self, message: String, builder: F) -> Self
+    where
+        F: FnOnce(StackBlock) -> StackBlock,
+    {
+        let stack = StackBlock::new(message);
+        let stack = builder(stack);
+        self.add_block(LogBlock::Stack(stack))
     }
 
-    /// Adds a title block.
-    pub fn title_str(self, message: &str, show_date: bool, show_thread: bool) -> Self {
-        self.add_block(LogBlock::Title(TitleBlock::new(
-            message.to_string(),
-            show_date,
-            show_thread,
-        )))
+    /// Adds a stack block.
+    pub fn stack_str<F>(self, message: &str, builder: F) -> Self
+    where
+        F: FnOnce(StackBlock) -> StackBlock,
+    {
+        self.stack(message.to_string(), builder)
     }
 
     /// Adds an indent block.

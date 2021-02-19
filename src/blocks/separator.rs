@@ -19,13 +19,13 @@ impl SeparatorBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The width of the line separator.
-    pub fn width(&self) -> usize {
+    pub fn get_width(&self) -> usize {
         self.width
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn set_width(mut self, width: usize) -> Self {
+    pub fn width(mut self, width: usize) -> Self {
         self.width = width;
         self
     }

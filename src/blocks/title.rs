@@ -26,32 +26,32 @@ impl TitleBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The message of the block.
-    pub fn message(&self) -> &str {
+    pub fn get_message(&self) -> &str {
         &self.message
     }
 
     /// Whether to show the current date or not.
-    pub fn show_date(&self) -> bool {
+    pub fn get_show_date(&self) -> bool {
         self.show_date
     }
 
     /// Whether to show the current thread or not.
-    pub fn show_thread(&self) -> bool {
+    pub fn get_show_thread(&self) -> bool {
         self.show_thread
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn set_message(mut self, message: String) -> Self {
+    pub fn message(mut self, message: String) -> Self {
         self.message = message;
         self
     }
 
-    pub fn set_show_date(&mut self, show_date: bool) {
+    pub fn show_date(&mut self, show_date: bool) {
         self.show_date = show_date;
     }
 
-    pub fn set_show_thread(&mut self, show_thread: bool) {
+    pub fn show_thread(&mut self, show_thread: bool) {
         self.show_thread = show_thread;
     }
 
@@ -78,10 +78,8 @@ impl TitleBlock {
             None
         };
 
-        let mut message = String::new();
-        indent_text(
+        let message = indent_text(
             self.message.as_str(),
-            &mut message,
             " ".repeat(header_size).as_str(),
             false,
         );

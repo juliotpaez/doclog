@@ -14,13 +14,13 @@ impl PlainTextBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The message to print.
-    pub fn message(&self) -> &str {
+    pub fn get_message(&self) -> &str {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn set_message(mut self, message: String) -> Self {
+    pub fn message(mut self, message: String) -> Self {
         self.message = message;
         self
     }
@@ -28,7 +28,7 @@ impl PlainTextBlock {
     // METHODS ----------------------------------------------------------------
 
     pub(crate) fn to_text(&self, buffer: &mut String) {
-        buffer.push_str(self.message());
+        buffer.push_str(self.get_message());
     }
 }
 

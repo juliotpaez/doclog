@@ -1,6 +1,8 @@
 /// Indents `text` prefixing each line with `indent`.
 /// If `indent_first` is `true`, the first line is also prefixed.
-pub fn indent_text(text: &str, buffer: &mut String, indent: &str, indent_first: bool) {
+pub fn indent_text(text: &str, indent: &str, indent_first: bool) -> String {
+    let mut buffer = String::new();
+
     for (i, line) in text.lines().enumerate() {
         if i > 0 {
             buffer.push('\n');
@@ -11,6 +13,19 @@ pub fn indent_text(text: &str, buffer: &mut String, indent: &str, indent_first: 
         }
         buffer.push_str(line);
     }
+
+    buffer
+}
+
+/// Removes the jump lines of `text`.
+pub fn remove_jump_lines(text: &str) -> String {
+    let mut buffer = String::new();
+
+    for line in text.lines() {
+        buffer.push_str(line);
+    }
+
+    buffer
 }
 
 // ----------------------------------------------------------------------------
@@ -23,14 +38,16 @@ mod tests {
 
     #[test]
     fn test_indent_text() {
-        let mut buffer = String::new();
-        indent_text("this\nis\na\ntest", &mut buffer, "---", false);
+        let result = indent_text("this\nis\na\ntest", "---", false);
+        assert_eq!(result, format!("this\n---is\n---a\n---test"));
 
-        assert_eq!(buffer, format!("this\n---is\n---a\n---test"));
+        let result = indent_text("this\nis\na\ntest", "---", true);
+        assert_eq!(result, format!("---this\n---is\n---a\n---test"));
+    }
 
-        let mut buffer = String::new();
-        indent_text("this\nis\na\ntest", &mut buffer, "---", true);
-
-        assert_eq!(buffer, format!("---this\n---is\n---a\n---test"));
+    #[test]
+    fn test_remove_jump_lines() {
+        let result = remove_jump_lines("this\nis\na\ntest");
+        assert_eq!(result, format!("thisisatest"));
     }
 }

@@ -17,13 +17,13 @@ impl IndentBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The inner log of the indent.
-    pub fn log(&self) -> &Box<Log> {
+    pub fn get_log(&self) -> &Box<Log> {
         &self.log
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn set_log(mut self, log: Box<Log>) -> Self {
+    pub fn log(mut self, log: Box<Log>) -> Self {
         self.log = log;
         self
     }
@@ -34,7 +34,7 @@ impl IndentBlock {
         let mut inner_buffer = String::new();
         self.log.to_text_internal(in_ansi, &mut inner_buffer);
 
-        indent_text(inner_buffer.as_str(), buffer, "    ", true);
+        buffer.push_str(indent_text(inner_buffer.as_str(), "    ", true).as_str());
     }
 }
 
