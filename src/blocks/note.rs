@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use yansi::{Color, Style};
 
 use crate::utils::text::{indent_text, remove_jump_lines};
@@ -6,38 +8,48 @@ use crate::Log;
 /// A block that prints a note.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NoteBlock {
-    title: String,
-    message: String,
+    title: Arc<String>,
+    message: Arc<String>,
 }
 
 impl NoteBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(title: String, message: String) -> NoteBlock {
+    pub fn new(title: Arc<String>, message: Arc<String>) -> NoteBlock {
         NoteBlock { title, message }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The title of the block.
-    pub fn get_title(&self) -> &str {
+    pub fn get_title(&self) -> &Arc<String> {
         &self.title
     }
 
     /// The message of the block.
-    pub fn get_message(&self) -> &str {
+    pub fn get_message(&self) -> &Arc<String> {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn title(mut self, title: String) -> Self {
+    pub fn title(mut self, title: Arc<String>) -> Self {
         self.title = title;
         self
     }
 
-    pub fn message(mut self, message: String) -> Self {
+    pub fn title_str(mut self, title: &str) -> Self {
+        self.title = Arc::new(title.to_string());
+        self
+    }
+
+    pub fn message(mut self, message: Arc<String>) -> Self {
         self.message = message;
+        self
+    }
+
+    pub fn message_str(mut self, message: &str) -> Self {
+        self.message = Arc::new(message.to_string());
         self
     }
 

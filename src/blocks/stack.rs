@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use yansi::Style;
 
 use crate::blocks::StackTraceBlock;
@@ -10,7 +12,7 @@ use crate::Log;
 /// A error stack block.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct StackBlock {
-    message: String,
+    message: Arc<String>,
     traces: Vec<StackTraceBlock>,
     cause: Option<Box<StackBlock>>,
     show_stack_numbers: bool,
@@ -19,7 +21,7 @@ pub struct StackBlock {
 impl StackBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(message: String) -> StackBlock {
+    pub fn new(message: Arc<String>) -> StackBlock {
         StackBlock {
             message,
             traces: vec![],
@@ -31,7 +33,7 @@ impl StackBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The message of the stack
-    pub fn get_message(&self) -> &str {
+    pub fn get_message(&self) -> &Arc<String> {
         &self.message
     }
 
@@ -52,8 +54,13 @@ impl StackBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message(mut self, message: String) -> Self {
+    pub fn message(mut self, message: Arc<String>) -> Self {
         self.message = message;
+        self
+    }
+
+    pub fn message_str(mut self, message: &str) -> Self {
+        self.message = Arc::new(message.to_string());
         self
     }
 
@@ -65,7 +72,7 @@ impl StackBlock {
     // METHODS ----------------------------------------------------------------
 
     /// Adds a trace to the block.
-    pub fn trace<F>(mut self, location: String, builder: F) -> Self
+    pub fn trace<F>(mut self, location: Arc<String>, builder: F) -> Self
     where
         F: FnOnce(StackTraceBlock) -> StackTraceBlock,
     {
@@ -80,11 +87,11 @@ impl StackBlock {
     where
         F: FnOnce(StackTraceBlock) -> StackTraceBlock,
     {
-        self.trace(location.to_string(), builder)
+        self.trace(Arc::new(location.to_string()), builder)
     }
 
     /// Sets a cause to the block.
-    pub fn cause<F>(mut self, message: String, builder: F) -> Self
+    pub fn cause<F>(mut self, message: Arc<String>, builder: F) -> Self
     where
         F: FnOnce(StackBlock) -> StackBlock,
     {
@@ -99,7 +106,7 @@ impl StackBlock {
     where
         F: FnOnce(StackBlock) -> StackBlock,
     {
-        self.cause(message.to_string(), builder)
+        self.cause(Arc::new(message.to_string()), builder)
     }
 
     /// Clears the cause of the block.

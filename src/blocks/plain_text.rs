@@ -1,27 +1,34 @@
+use std::sync::Arc;
+
 /// A block that prints a plain text.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PlainTextBlock {
-    message: String,
+    message: Arc<String>,
 }
 
 impl PlainTextBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(message: String) -> PlainTextBlock {
+    pub fn new(message: Arc<String>) -> PlainTextBlock {
         PlainTextBlock { message }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The message to print.
-    pub fn get_message(&self) -> &str {
+    pub fn get_message(&self) -> &Arc<String> {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message(mut self, message: String) -> Self {
+    pub fn message(mut self, message: Arc<String>) -> Self {
         self.message = message;
+        self
+    }
+
+    pub fn message_str(mut self, message: &str) -> Self {
+        self.message = Arc::new(message.to_string());
         self
     }
 

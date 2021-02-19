@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use yansi::{Color, Style};
 
 use crate::utils::text::remove_jump_lines;
@@ -6,27 +8,32 @@ use crate::Log;
 /// A block that prints a tag.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TagBlock {
-    tag: String,
+    tag: Arc<String>,
 }
 
 impl TagBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(tag: String) -> TagBlock {
+    pub fn new(tag: Arc<String>) -> TagBlock {
         TagBlock { tag }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The tag of the block.
-    pub fn get_tag(&self) -> &str {
+    pub fn get_tag(&self) -> &Arc<String> {
         &self.tag
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn tag(mut self, tag: String) -> Self {
+    pub fn tag(mut self, tag: Arc<String>) -> Self {
         self.tag = tag;
+        self
+    }
+
+    pub fn tag_str(mut self, tag: &str) -> Self {
+        self.tag = Arc::new(tag.to_string());
         self
     }
 

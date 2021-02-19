@@ -1,4 +1,5 @@
 use std::option::Option::Some;
+use std::sync::Arc;
 
 use yansi::Style;
 
@@ -8,17 +9,17 @@ use crate::Log;
 /// A trace message of a stack block.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct StackTraceBlock {
-    location: String,
-    inner_path: Option<String>,
+    location: Arc<String>,
+    inner_path: Option<Arc<String>>,
     line: Option<usize>,
     column: Option<usize>,
-    message: Option<String>,
+    message: Option<Arc<String>>,
 }
 
 impl StackTraceBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(location: String) -> StackTraceBlock {
+    pub fn new(location: Arc<String>) -> StackTraceBlock {
         StackTraceBlock {
             location,
             inner_path: None,
@@ -28,15 +29,19 @@ impl StackTraceBlock {
         }
     }
 
+    pub fn new_str(location: &str) -> StackTraceBlock {
+        Self::new(Arc::new(location.to_string()))
+    }
+
     // GETTERS ----------------------------------------------------------------
 
     /// The file path of the trace.
-    pub fn get_location(&self) -> &str {
+    pub fn get_location(&self) -> &Arc<String> {
         &self.location
     }
 
     /// The relative path of the trace inside a file, e.g. class.method.
-    pub fn get_inner_path(&self) -> &Option<String> {
+    pub fn get_inner_path(&self) -> &Option<Arc<String>> {
         &self.inner_path
     }
 
@@ -51,28 +56,28 @@ impl StackTraceBlock {
     }
 
     /// The message to show.
-    pub fn get_message(&self) -> &Option<String> {
+    pub fn get_message(&self) -> &Option<Arc<String>> {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn location(mut self, location: String) -> Self {
+    pub fn location(mut self, location: Arc<String>) -> Self {
         self.location = location;
         self
     }
     pub fn location_str(mut self, location: &str) -> Self {
-        self.location = location.to_string();
+        self.location = Arc::new(location.to_string());
         self
     }
 
-    pub fn inner_path(mut self, inner_path: String) -> Self {
+    pub fn inner_path(mut self, inner_path: Arc<String>) -> Self {
         self.inner_path = Some(inner_path);
         self
     }
 
     pub fn inner_path_str(mut self, inner_path: &str) -> Self {
-        self.inner_path = Some(inner_path.to_string());
+        self.inner_path = Some(Arc::new(inner_path.to_string()));
         self
     }
 
@@ -101,13 +106,13 @@ impl StackTraceBlock {
         self
     }
 
-    pub fn message(mut self, message: String) -> Self {
+    pub fn message(mut self, message: Arc<String>) -> Self {
         self.message = Some(message);
         self
     }
 
     pub fn message_str(mut self, message: &str) -> Self {
-        self.message = Some(message.to_string());
+        self.message = Some(Arc::new(message.to_string()));
         self
     }
 
@@ -202,28 +207,28 @@ mod tests {
         // LOCATION
         let mut text = String::new();
         let log = Log::info();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string());
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test");
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test"));
 
         // LOCATION + LINE
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string());
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test").line(15);
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test:15"));
 
         // LOCATION + COLUMN
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string()).column(24);
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test").column(24);
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test:??:24"));
 
         // LOCATION + LINE + COLUMN
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string())
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test")
             .line(15)
             .column(24);
         stack_trace.to_text(&log, false, &mut text);
@@ -232,23 +237,23 @@ mod tests {
 
         // LOCATION + INNER_PATH
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/t\no/file.test".to_string())
-            .inner_path_str("path::t\no::class");
+        let stack_trace =
+            StackTraceBlock::new_str("/path/t\no/file.test").inner_path_str("path::t\no::class");
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test at path::to::class"));
 
         // LOCATION + MESSAGE
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string())
-            .message_str("Multiline\nmessage");
+        let stack_trace =
+            StackTraceBlock::new_str("/path/to/file.test").message_str("Multiline\nmessage");
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test - Multiline\n    message"));
 
         // LOCATION + ALL
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string())
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test")
             .inner_path_str("path::t\no::class")
             .line(15)
             .column(24)
@@ -266,28 +271,28 @@ mod tests {
         // LOCATION
         let mut text = String::new();
         let log = Log::info();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string());
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test");
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test"));
 
         // LOCATION + LINE
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string());
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test").line(15);
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test:15"));
 
         // LOCATION + COLUMN
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string()).column(24);
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test").column(24);
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test:??:24"));
 
         // LOCATION + LINE + COLUMN
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string())
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test")
             .line(15)
             .column(24);
         stack_trace.to_text(&log, true, &mut text);
@@ -296,8 +301,8 @@ mod tests {
 
         // LOCATION + INNER_PATH
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string())
-            .inner_path_str("path::t\no::class");
+        let stack_trace =
+            StackTraceBlock::new_str("/path/to/file.test").inner_path_str("path::t\no::class");
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(
@@ -310,8 +315,8 @@ mod tests {
 
         // LOCATION + MESSAGE
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string())
-            .message_str("Multiline\nmessage");
+        let stack_trace =
+            StackTraceBlock::new_str("/path/to/file.test").message_str("Multiline\nmessage");
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(
@@ -324,7 +329,7 @@ mod tests {
 
         // LOCATION + ALL
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".to_string())
+        let stack_trace = StackTraceBlock::new_str("/path/to/file.test")
             .inner_path_str("path::t\no::class")
             .line(15)
             .column(24)

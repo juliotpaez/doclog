@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use chrono::{SecondsFormat, Utc};
 use yansi::{Color, Style};
 
@@ -7,7 +9,7 @@ use crate::Log;
 /// A block that prints a title.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TitleBlock {
-    message: String,
+    message: Arc<String>,
     show_date: bool,
     show_thread: bool,
 }
@@ -15,7 +17,7 @@ pub struct TitleBlock {
 impl TitleBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(message: String, show_date: bool, show_thread: bool) -> TitleBlock {
+    pub fn new(message: Arc<String>, show_date: bool, show_thread: bool) -> TitleBlock {
         TitleBlock {
             message,
             show_date,
@@ -26,7 +28,7 @@ impl TitleBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The message of the block.
-    pub fn get_message(&self) -> &str {
+    pub fn get_message(&self) -> &Arc<String> {
         &self.message
     }
 
@@ -42,8 +44,13 @@ impl TitleBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message(mut self, message: String) -> Self {
+    pub fn message(mut self, message: Arc<String>) -> Self {
         self.message = message;
+        self
+    }
+
+    pub fn message_str(mut self, message: &str) -> Self {
+        self.message = Arc::new(message.to_string());
         self
     }
 
