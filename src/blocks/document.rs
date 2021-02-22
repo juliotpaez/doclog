@@ -11,7 +11,7 @@ use crate::constants::{
     VERTICAL_LEFT_BAR, VERTICAL_RIGHT_BAR,
 };
 use crate::utils::cursor::Cursor;
-use crate::utils::text::{indent_text, remove_jump_lines};
+use crate::utils::text::{color_bold_if, indent_text, remove_ansi_escapes, remove_jump_lines};
 use crate::utils::RangeMap;
 use crate::Log;
 
@@ -57,7 +57,6 @@ impl DocumentBlock {
     }
 
     /// The title message to show at the top of the block.
-    /// Ignored if the block belongs to another one as a related block.
     pub fn get_title(&self) -> &Option<Arc<String>> {
         &self.title
     }
@@ -223,7 +222,9 @@ impl DocumentBlock {
     where
         F: FnOnce(DocumentBlock) -> DocumentBlock,
     {
-        let document = DocumentBlock::new(self.content.clone());
+        let mut document = DocumentBlock::new(self.content.clone());
+        document.show_new_line_chars = self.show_new_line_chars;
+
         let document = builder(document);
         self.related_block = Some(Box::new(document));
         self
@@ -246,306 +247,284 @@ impl DocumentBlock {
         buffer: &mut String,
         is_related_block: bool,
     ) {
-        if in_ansi {
-            // // FIRST LINE + TITLE
-            // if is_related_block {
-            //     buffer.push_str(
-            //         Style::new(log.level().color())
-            //             .bold()
-            //             .paint(format!("{}{}", VERTICAL_RIGHT_BAR, HORIZONTAL_BAR))
-            //             .to_string()
-            //             .as_str(),
-            //     );
-            //
-            //     if let Some(title) = &self.title {
-            //         let indent = format!(
-            //             "{}  ",
-            //             Style::new(log.level().color()).bold().paint(VERTICAL_BAR)
-            //         );
-            //         let title = indent_text(&title, &indent, false);
-            //         buffer.push_str(" ");
-            //         buffer.push_str(title.as_str());
-            //     }
-            // } else {
-            //     if self.file_path.is_some() {
-            //         buffer.push_str(
-            //             Style::new(log.level().color())
-            //                 .bold()
-            //                 .paint(format!(
-            //                     "{}{}{}",
-            //                     BOTTOM_RIGHT_CORNER, HORIZONTAL_BOTTOM_BAR, HORIZONTAL_BAR
-            //                 ))
-            //                 .to_string()
-            //                 .as_str(),
-            //         );
-            //     } else {
-            //         buffer.push_str(
-            //             Style::new(log.level().color())
-            //                 .bold()
-            //                 .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR))
-            //                 .to_string()
-            //                 .as_str(),
-            //         );
-            //     }
-            //
-            //     if let Some(title) = &self.title {
-            //         let title = if self.file_path.is_some() {
-            //             indent_text(
-            //                 &title,
-            //                 format!("{}{}  ", VERTICAL_BAR, VERTICAL_BAR).as_str(),
-            //                 false,
-            //             )
-            //         } else {
-            //             indent_text(&title, format!("{}  ", VERTICAL_BAR).as_str(), false)
-            //         };
-            //         buffer.push_str(" ");
-            //         buffer.push_str(title.as_str());
-            //     }
-            //
-            //     // FILE
-            //     if let Some(file_path) = &self.file_path {
-            //         let file_path = remove_jump_lines(file_path.as_str());
-            //
-            //         buffer.push('\n');
-            //         buffer.push_str(VERTICAL_BAR);
-            //         buffer.push_str(TOP_RIGHT_CORNER);
-            //         buffer.push_str(RIGHT_POINTER);
-            //         buffer.push_str(" at ");
-            //         buffer.push_str(file_path.as_str());
-            //     }
-            // }
-            //
-            // // TODO SECTIONS
-            //
-            // // RELATED BLOCK
-            // if let Some(related_block) = &self.related_block {
-            //     buffer.push('\n');
-            //     related_block.to_text_with_options(log, in_ansi, buffer, true);
-            // }
-            //
-            // // FINAL LINE + END MESSAGE
-            // if !is_related_block {
-            //     buffer.push('\n');
-            //     buffer.push_str(TOP_RIGHT_CORNER);
-            //     buffer.push_str(HORIZONTAL_BAR);
-            //
-            //     if let Some(end_message) = &self.end_message {
-            //         buffer.push_str(" ");
-            //         buffer.push_str(indent_text(end_message.as_str(), "   ", false).as_str());
-            //     }
-            // }
+        // FIRST LINE + TITLE
+        if is_related_block {
+            buffer.push_str(&color_bold_if(
+                format!("{}{}", VERTICAL_RIGHT_BAR, HORIZONTAL_BAR),
+                log.level().color(),
+                in_ansi,
+            ));
+
+            if let Some(title) = &self.title {
+                let indent = format!(
+                    "{}  ",
+                    &color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
+                );
+                let title = indent_text(&title, &indent, false);
+                buffer.push_str(" ");
+                buffer.push_str(title.as_str());
+            }
         } else {
-            // FIRST LINE + TITLE
-            if is_related_block {
-                buffer.push_str(VERTICAL_RIGHT_BAR);
-                buffer.push_str(HORIZONTAL_BAR);
-
-                if let Some(title) = &self.title {
-                    let title = indent_text(&title, format!("{}  ", VERTICAL_BAR).as_str(), false);
-                    buffer.push_str(" ");
-                    buffer.push_str(title.as_str());
-                }
+            if self.file_path.is_some() {
+                buffer.push_str(&color_bold_if(
+                    format!(
+                        "{}{}{}",
+                        BOTTOM_RIGHT_CORNER, HORIZONTAL_BOTTOM_BAR, HORIZONTAL_BAR
+                    ),
+                    log.level().color(),
+                    in_ansi,
+                ));
             } else {
-                buffer.push_str(BOTTOM_RIGHT_CORNER);
-
-                if self.file_path.is_some() {
-                    buffer.push_str(HORIZONTAL_BOTTOM_BAR);
-                    buffer.push_str(HORIZONTAL_BAR);
-                } else {
-                    buffer.push_str(HORIZONTAL_BAR);
-                }
-
-                if let Some(title) = &self.title {
-                    let title = if self.file_path.is_some() {
-                        indent_text(
-                            &title,
-                            format!("{}{}  ", VERTICAL_BAR, VERTICAL_BAR).as_str(),
-                            false,
-                        )
-                    } else {
-                        indent_text(&title, format!("{}  ", VERTICAL_BAR).as_str(), false)
-                    };
-                    buffer.push_str(" ");
-                    buffer.push_str(title.as_str());
-                }
-
-                // FILE
-                if let Some(file_path) = &self.file_path {
-                    let file_path = remove_jump_lines(file_path.as_str());
-
-                    buffer.push('\n');
-                    buffer.push_str(VERTICAL_BAR);
-                    buffer.push_str(TOP_RIGHT_CORNER);
-                    buffer.push_str(RIGHT_POINTER);
-                    buffer.push_str(" at ");
-                    buffer.push_str(file_path.as_str());
-                }
+                buffer.push_str(&color_bold_if(
+                    format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR),
+                    log.level().color(),
+                    in_ansi,
+                ));
             }
 
-            // SECTIONS
-            if !self.sections.is_empty() {
-                // Normalize sections.
-                let mut normalized_sections = self.normalize_sections();
-                let last_line = normalized_sections.last().unwrap().to.line;
-                let last_content_line = Cursor::from_byte_offset_and_cursor(
-                    &self.content,
-                    self.content.len(),
-                    &normalized_sections.last().unwrap().to,
-                )
-                .line;
-                let max_line_num_digits = last_line.to_string().len();
+            if let Some(title) = &self.title {
+                let title = if self.file_path.is_some() {
+                    indent_text(
+                        &title,
+                        &color_bold_if(
+                            format!("{}{}  ", VERTICAL_BAR, VERTICAL_BAR),
+                            log.level().color(),
+                            in_ansi,
+                        ),
+                        false,
+                    )
+                } else {
+                    indent_text(
+                        &title,
+                        &color_bold_if(format!("{}  ", VERTICAL_BAR), log.level().color(), in_ansi),
+                        false,
+                    )
+                };
+                buffer.push_str(" ");
+                buffer.push_str(title.as_str());
+            }
 
-                // EMPTY LINE
-                // Only if file path is present or the title is multiline.
-                if self.file_path.is_some()
-                    || self
-                        .title
-                        .as_ref()
-                        .map_or(false, |v| memchr::memchr(b'\n', v.as_bytes()).is_some())
-                {
-                    buffer.push('\n');
-                    buffer.push_str(VERTICAL_BAR);
+            // FILE
+            if let Some(file_path) = &self.file_path {
+                let file_path = remove_jump_lines(file_path.as_str());
+
+                buffer.push('\n');
+                buffer.push_str(&color_bold_if(
+                    format!("{}{}{}", VERTICAL_BAR, TOP_RIGHT_CORNER, RIGHT_POINTER),
+                    log.level().color(),
+                    in_ansi,
+                ));
+                buffer.push(' ');
+                buffer.push_str(&color_bold_if(
+                    "at".to_string(),
+                    log.level().color(),
+                    in_ansi,
+                ));
+                buffer.push(' ');
+                buffer.push_str(file_path.as_str());
+            }
+        }
+
+        // SECTIONS
+        if !self.sections.is_empty() {
+            // Normalize sections.
+            let mut normalized_sections = self.normalize_sections(self, log);
+            let last_line = normalized_sections.last().unwrap().to.line;
+            let last_content_line = Cursor::from_byte_offset_and_cursor(
+                &self.content,
+                self.content.len(),
+                &normalized_sections.last().unwrap().to,
+            )
+            .line;
+            let max_line_num_digits = last_line.to_string().len();
+
+            // EMPTY LINE
+            // Only if file path is present or the title is multiline.
+            if self.file_path.is_some()
+                || self
+                    .title
+                    .as_ref()
+                    .map_or(false, |v| memchr::memchr(b'\n', v.as_bytes()).is_some())
+            {
+                buffer.push('\n');
+                buffer.push_str(&color_bold_if(
+                    VERTICAL_BAR.to_string(),
+                    log.level().color(),
+                    in_ansi,
+                ));
+            }
+
+            // CONTENT
+            let mut sections_in_same_line = Vec::new();
+            while !normalized_sections.is_empty() {
+                // Filter only those sections that are in the same content line.
+                sections_in_same_line.clear();
+                self.get_sections_in_same_line(
+                    &mut normalized_sections,
+                    &mut sections_in_same_line,
+                );
+
+                // Get column to align messages.
+                let first_section = sections_in_same_line.first().unwrap();
+                let last_section = sections_in_same_line.last().unwrap();
+                let number_of_cursors =
+                    sections_in_same_line.iter().filter(|s| s.is_cursor).count();
+                let message_column = last_section.to.column + number_of_cursors + 1;
+
+                // CONTENT LINE
+                buffer.push('\n');
+                buffer.push_str(&color_bold_if(
+                    VERTICAL_BAR.to_string(),
+                    log.level().color(),
+                    in_ansi,
+                ));
+                buffer.push_str("   ");
+                buffer.push_str(&color_bold_if(
+                    format!(
+                        "{:>width$}",
+                        last_section.from.line,
+                        width = max_line_num_digits
+                    ),
+                    log.level().color(),
+                    in_ansi,
+                ));
+                buffer.push_str("  ");
+
+                // SECTIONS
+                let start_line_cursor = first_section.from.start_line_cursor(&self.content);
+                let mut prev_cursor = start_line_cursor.clone();
+                for section in &sections_in_same_line {
+                    // PREVIOUS CONTENT
+                    buffer.push_str(prev_cursor.slice(&self.content, &section.from));
+
+                    // CONTENT
+                    section.print_content_section(self, in_ansi, buffer);
+
+                    prev_cursor = section.to.clone();
                 }
 
-                // CONTENT
-                let mut sections_in_same_line = Vec::new();
-                while !normalized_sections.is_empty() {
-                    // Filter only those sections that are in the same content line.
-                    sections_in_same_line.clear();
-                    self.get_sections_in_same_line(
-                        &mut normalized_sections,
-                        &mut sections_in_same_line,
-                    );
+                // FINAL CONTENT
+                buffer.push_str(prev_cursor.slice_to_line_end(&self.content));
 
-                    // Get column to align messages.
-                    let first_section = sections_in_same_line.first().unwrap();
-                    let last_section = sections_in_same_line.last().unwrap();
-                    let number_of_cursors =
-                        sections_in_same_line.iter().filter(|s| s.is_cursor).count();
-                    let mut message_column = last_section.to.column + number_of_cursors + 1;
+                if self.show_new_line_chars && last_section.to.line != last_content_line {
+                    buffer.push_str(&color_bold_if(
+                        NEW_LINE.to_string(),
+                        last_section.color.unwrap(),
+                        in_ansi
+                            && (last_section.is_multiline_start
+                                || last_section.is_ended_by_new_line(&self.content)),
+                    ));
+                }
 
-                    println!("{}", message_column);
+                // ARROW LINES
+                // Count lines with messages.
+                let arrow_lines_height = max(
+                    sections_in_same_line
+                        .iter()
+                        .filter(|v| v.message.is_some() || v.is_multiline_start)
+                        .count(),
+                    1, /* This is because there is always one line */
+                );
 
-                    // CONTENT LINE
+                // Print lines.
+                let digits_as_whitespace = " ".repeat(max_line_num_digits);
+
+                for arrow_line in 0..arrow_lines_height {
+                    let mut arrow_lines_height = arrow_lines_height;
+
                     buffer.push('\n');
-                    buffer.push_str(VERTICAL_BAR);
+                    buffer.push_str(&color_bold_if(
+                        VERTICAL_BAR.to_string(),
+                        log.level().color(),
+                        in_ansi,
+                    ));
                     buffer.push_str("   ");
-                    buffer.push_str(
-                        format!(
-                            "{:>width$}",
-                            last_section.from.line,
-                            width = max_line_num_digits
-                        )
-                        .as_str(),
-                    );
+                    buffer.push_str(&digits_as_whitespace);
                     buffer.push_str("  ");
 
                     // SECTIONS
-                    let start_line_cursor = first_section.from.start_line_cursor(&self.content);
                     let mut prev_cursor = start_line_cursor.clone();
                     for section in &sections_in_same_line {
                         // PREVIOUS CONTENT
-                        buffer.push_str(prev_cursor.slice(&self.content, &section.from));
+                        buffer.push_str(
+                            &" ".repeat(section.from.char_offset - prev_cursor.char_offset),
+                        );
 
                         // CONTENT
-                        section.print_content_section(self, in_ansi, buffer);
+                        let has_printed_message = section.print(
+                            buffer,
+                            in_ansi,
+                            arrow_line,
+                            arrow_lines_height,
+                            message_column,
+                            max_line_num_digits,
+                        );
+
+                        if has_printed_message {
+                            break;
+                        }
+
+                        if section.message.is_some() {
+                            arrow_lines_height -= 1;
+                        }
 
                         prev_cursor = section.to.clone();
                     }
-
-                    // FINAL CONTENT
-                    buffer.push_str(prev_cursor.slice_to_line_end(&self.content));
-
-                    if self.show_new_line_chars && last_section.to.line != last_content_line {
-                        buffer.push_str(NEW_LINE);
-                    }
-
-                    // ARROW LINES
-                    // Count lines with messages.
-                    let arrow_lines_height = max(
-                        sections_in_same_line
-                            .iter()
-                            .filter(|v| v.message.is_some() || v.is_multiline_start)
-                            .count(),
-                        1, /* This is because there is always one line */
-                    );
-
-                    // Print lines.
-                    let digits_as_whitespace = " ".repeat(max_line_num_digits);
-
-                    for arrow_line in 0..arrow_lines_height {
-                        let mut arrow_lines_height = arrow_lines_height;
-
-                        buffer.push('\n');
-                        buffer.push_str(VERTICAL_BAR);
-                        buffer.push_str("   ");
-                        buffer.push_str(&digits_as_whitespace);
-                        buffer.push_str("  ");
-
-                        // SECTIONS
-                        let mut prev_cursor = start_line_cursor.clone();
-                        for section in (0..sections_in_same_line.len() - arrow_line)
-                            .into_iter()
-                            .map(|i| &sections_in_same_line[i])
-                        {
-                            // PREVIOUS CONTENT
-                            buffer.push_str(
-                                &" ".repeat(section.from.char_offset - prev_cursor.char_offset),
-                            );
-
-                            // CONTENT
-                            section.print(
-                                buffer,
-                                self,
-                                in_ansi,
-                                arrow_line,
-                                arrow_lines_height,
-                                message_column,
-                                max_line_num_digits,
-                            );
-
-                            if section.message.is_some() {
-                                arrow_lines_height -= 1;
-                            }
-
-                            prev_cursor = section.to.clone();
-                        }
-                    }
                 }
             }
+        }
 
-            // RELATED BLOCK
-            if let Some(related_block) = &self.related_block {
-                buffer.push('\n');
-                related_block.to_text_with_options(log, in_ansi, buffer, true);
-            }
+        // RELATED BLOCK
+        if let Some(related_block) = &self.related_block {
+            buffer.push('\n');
+            related_block.to_text_with_options(log, in_ansi, buffer, true);
+        }
 
-            // FINAL LINE + END MESSAGE
-            if !is_related_block {
-                buffer.push('\n');
-                buffer.push_str(TOP_RIGHT_CORNER);
-                buffer.push_str(HORIZONTAL_BAR);
+        // FINAL LINE + END MESSAGE
+        if !is_related_block {
+            buffer.push('\n');
+            buffer.push_str(&color_bold_if(
+                format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR),
+                log.level().color(),
+                in_ansi,
+            ));
 
-                if let Some(end_message) = &self.end_message {
-                    buffer.push_str(" ");
-                    buffer.push_str(indent_text(end_message.as_str(), "   ", false).as_str());
-                }
+            if let Some(end_message) = &self.end_message {
+                buffer.push_str(" ");
+                buffer.push_str(indent_text(end_message.as_str(), "   ", false).as_str());
             }
         }
     }
 
-    fn get_other_color(&self, log: &Log, current: &Color) -> Color {
-        if current == &self.secondary_color {
-            log.level().color()
-        } else {
-            self.secondary_color
-        }
-    }
-
-    fn normalize_sections(&self) -> Vec<HighlightedSection> {
+    fn normalize_sections(&self, document: &DocumentBlock, log: &Log) -> Vec<HighlightedSection> {
+        let mut color = log.level().color();
         self.sections
             .iter()
-            .flat_map(|(_, s)| {
+            .map(|(_, s)| {
+                let mut s = s.clone();
+
+                // Normalize colors.
+                let log_color = log.level().color();
+
+                if let Some(s_color) = &s.color {
+                    if s_color == &log_color {
+                        color = document.secondary_color;
+                    } else {
+                        color = log_color;
+                    }
+                } else {
+                    s.color = Some(color);
+
+                    if color == log_color {
+                        color = document.secondary_color;
+                    } else {
+                        color = log_color;
+                    }
+                }
+
+                s
+            })
+            .flat_map(|s| {
                 // To normalizing multiline sections we must split them into two different sections.
                 if s.is_multiline_start {
                     if s.content(&self.content).ends_with("\n") {
@@ -612,7 +591,7 @@ impl DocumentBlock {
                     }
                 } else {
                     // Single line sections are kept the same.
-                    vec![s.clone()]
+                    vec![s]
                 }
             })
             .collect()
@@ -670,21 +649,35 @@ impl HighlightedSection {
         self.from.slice(text, &self.to)
     }
 
-    pub fn is_new_line(&self) -> bool {
-        self.from.char_offset == self.to.char_offset && !self.is_cursor
+    pub fn is_ended_by_new_line(&self, text: &str) -> bool {
+        let text = &text[self.to.byte_offset..];
+
+        match text.chars().next() {
+            Some(v) => v == '\n',
+            None => false,
+        }
     }
 
     // METHODS ----------------------------------------------------------------
 
     fn print_content_section(&self, document: &DocumentBlock, in_ansi: bool, buffer: &mut String) {
-        if in_ansi {
-            // TODO
+        if self.is_cursor {
+            buffer.push_str(&color_bold_if(
+                MIDDLE_DOT.to_string(),
+                self.color.unwrap(),
+                in_ansi,
+            ));
         } else {
-            if self.is_cursor {
-                buffer.push_str(MIDDLE_DOT);
-            } else {
-                let content = self.content(&document.content).trim();
-                buffer.push_str(content);
+            let content = self.content(&document.content);
+
+            buffer.push_str(&color_bold_if(
+                content.trim().to_string(),
+                self.color.unwrap(),
+                in_ansi,
+            ));
+
+            if content.ends_with("\r") {
+                buffer.push(' ');
             }
         }
     }
@@ -692,175 +685,230 @@ impl HighlightedSection {
     fn print(
         &self,
         buffer: &mut String,
-        document: &DocumentBlock,
         in_ansi: bool,
         arrow_line: usize,
         arrow_lines_height: usize,
         message_column: usize,
         max_line_num_digits: usize,
-    ) {
-        if arrow_line + 1 > arrow_lines_height {
-            return;
-        }
-
+    ) -> bool {
         if arrow_line == 0 {
             self.print_first_arrow_line(
                 buffer,
-                document,
                 in_ansi,
                 message_column,
                 arrow_lines_height == 1,
                 max_line_num_digits,
-            )
+            );
+            arrow_lines_height == 1 && self.message.is_some()
         } else if self.message.is_some() && arrow_line + 1 == arrow_lines_height {
-            self.print_last_arrow_line(
-                buffer,
-                document,
-                in_ansi,
-                message_column,
-                max_line_num_digits,
-            )
+            self.print_last_arrow_line(buffer, in_ansi, message_column, max_line_num_digits);
+            true
         } else {
-            self.print_middle_arrow_line(buffer, document, in_ansi);
+            self.print_middle_arrow_line(buffer, in_ansi);
+            false
         }
     }
 
     fn print_first_arrow_line(
         &self,
         buffer: &mut String,
-        document: &DocumentBlock,
         in_ansi: bool,
         message_column: usize,
         print_message: bool,
         max_line_num_digits: usize,
     ) {
-        if in_ansi {
-            // TODO
-        } else {
-            let char_length = self.char_len();
+        let char_length = self.char_len();
 
-            if self.is_multiline_start {
-                buffer.push_str(TOP_RIGHT_CORNER);
-                buffer.push_str(&HORIZONTAL_BAR.repeat(char_length));
-                buffer.push_str(RIGHT_POINTER);
-            } else if self.is_multiline_end {
-                buffer.pop().unwrap();
-                buffer.push_str(RIGHT_POINTER);
+        if self.is_multiline_start {
+            buffer.push_str(&color_bold_if(
+                format!(
+                    "{}{}{}",
+                    TOP_RIGHT_CORNER,
+                    HORIZONTAL_BAR.repeat(char_length),
+                    RIGHT_POINTER
+                ),
+                self.color.unwrap(),
+                in_ansi,
+            ));
+        } else if self.is_multiline_end {
+            buffer.pop().unwrap();
 
-                if let Some(message) = &self.message {
-                    if print_message {
-                        // With message at first line.
-                        if char_length > 0 {
-                            buffer.push_str(&HORIZONTAL_BAR.repeat(char_length - 1));
-                        }
-
-                        buffer.push_str(HORIZONTAL_TOP_BAR);
-                        self.print_message(
-                            buffer,
-                            document,
-                            in_ansi,
-                            message_column,
-                            max_line_num_digits,
-                        );
-                    } else {
-                        // With message at other line.
-                        if char_length <= 1 {
-                            buffer.push_str(VERTICAL_LEFT_BAR);
-                        } else {
-                            buffer.push_str(HORIZONTAL_BOTTOM_BAR);
-                            buffer.push_str(&HORIZONTAL_BAR.repeat(char_length - 2));
-                            buffer.push_str(TOP_LEFT_CORNER);
-                        }
-                    }
-                } else {
-                    // No message.
+            if self.message.is_some() {
+                if print_message {
+                    // With message at first line.
                     if char_length > 0 {
-                        buffer.push_str(&HORIZONTAL_BAR.repeat(char_length - 1));
+                        buffer.push_str(&color_bold_if(
+                            format!(
+                                "{}{}{}",
+                                RIGHT_POINTER,
+                                HORIZONTAL_BAR.repeat(char_length - 1),
+                                HORIZONTAL_TOP_BAR
+                            ),
+                            self.color.unwrap(),
+                            in_ansi,
+                        ));
+                    } else {
+                        buffer.push_str(&color_bold_if(
+                            format!("{}{}", RIGHT_POINTER, HORIZONTAL_TOP_BAR),
+                            self.color.unwrap(),
+                            in_ansi,
+                        ));
                     }
 
-                    buffer.push_str(TOP_LEFT_CORNER);
+                    self.print_message(buffer, in_ansi, message_column, max_line_num_digits);
+                } else {
+                    // With message at other line.
+                    if char_length <= 1 {
+                        buffer.push_str(&color_bold_if(
+                            format!("{}{}", RIGHT_POINTER, VERTICAL_LEFT_BAR),
+                            self.color.unwrap(),
+                            in_ansi,
+                        ));
+                    } else {
+                        buffer.push_str(&color_bold_if(
+                            format!(
+                                "{}{}{}{}",
+                                RIGHT_POINTER,
+                                HORIZONTAL_BOTTOM_BAR,
+                                HORIZONTAL_BAR.repeat(char_length - 2),
+                                TOP_LEFT_CORNER
+                            ),
+                            self.color.unwrap(),
+                            in_ansi,
+                        ));
+                    }
                 }
             } else {
-                match char_length {
-                    0 | 1 => {
-                        if let Some(message) = &self.message {
-                            if print_message {
-                                // With message at first line.
-                                buffer.push_str(TOP_RIGHT_CORNER);
-                                self.print_message(
-                                    buffer,
-                                    document,
-                                    in_ansi,
-                                    message_column,
-                                    max_line_num_digits,
-                                );
-                            } else {
-                                // With message at other line.
-                                buffer.push_str(VERTICAL_BAR);
-                            }
+                // No message.
+                if char_length > 0 {
+                    buffer.push_str(&color_bold_if(
+                        format!(
+                            "{}{}{}",
+                            RIGHT_POINTER,
+                            HORIZONTAL_BAR.repeat(char_length - 1),
+                            TOP_LEFT_CORNER
+                        ),
+                        self.color.unwrap(),
+                        in_ansi,
+                    ));
+                } else {
+                    buffer.push_str(&color_bold_if(
+                        format!("{}{}", RIGHT_POINTER, TOP_LEFT_CORNER),
+                        self.color.unwrap(),
+                        in_ansi,
+                    ));
+                }
+            }
+        } else {
+            match char_length {
+                0 | 1 => {
+                    if self.message.is_some() {
+                        if print_message {
+                            // With message at first line.
+                            buffer.push_str(&color_bold_if(
+                                TOP_RIGHT_CORNER.to_string(),
+                                self.color.unwrap(),
+                                in_ansi,
+                            ));
+                            self.print_message(
+                                buffer,
+                                in_ansi,
+                                message_column,
+                                max_line_num_digits,
+                            );
                         } else {
-                            // No message.
-                            buffer.push_str(UP_POINTER);
+                            // With message at other line.
+                            buffer.push_str(&color_bold_if(
+                                VERTICAL_BAR.to_string(),
+                                self.color.unwrap(),
+                                in_ansi,
+                            ));
                         }
+                    } else {
+                        // No message.
+                        buffer.push_str(&color_bold_if(
+                            UP_POINTER.to_string(),
+                            self.color.unwrap(),
+                            in_ansi,
+                        ));
                     }
-                    _ => {
-                        if let Some(message) = &self.message {
-                            if print_message {
-                                // With message at first line.
-                                buffer.push_str(TOP_RIGHT_CORNER);
-                                buffer.push_str(&HORIZONTAL_BAR.repeat(char_length - 2));
-                                buffer.push_str(HORIZONTAL_TOP_BAR);
-                                self.print_message(
-                                    buffer,
-                                    document,
-                                    in_ansi,
-                                    message_column,
-                                    max_line_num_digits,
-                                );
-                            } else {
-                                // With message at other line.
-                                buffer.push_str(VERTICAL_RIGHT_BAR);
-                                buffer.push_str(&HORIZONTAL_BAR.repeat(char_length - 2));
-                                buffer.push_str(TOP_LEFT_CORNER);
-                            }
+                }
+                _ => {
+                    if self.message.is_some() {
+                        if print_message {
+                            // With message at first line.
+                            buffer.push_str(&color_bold_if(
+                                format!(
+                                    "{}{}{}",
+                                    TOP_RIGHT_CORNER,
+                                    HORIZONTAL_BAR.repeat(char_length - 2),
+                                    HORIZONTAL_TOP_BAR
+                                ),
+                                self.color.unwrap(),
+                                in_ansi,
+                            ));
+                            self.print_message(
+                                buffer,
+                                in_ansi,
+                                message_column,
+                                max_line_num_digits,
+                            );
                         } else {
-                            // No message.
-                            buffer.push_str(TOP_RIGHT_CORNER);
-                            buffer.push_str(&HORIZONTAL_BAR.repeat(char_length - 2));
-                            buffer.push_str(TOP_LEFT_CORNER);
+                            // With message at other line.
+                            buffer.push_str(&color_bold_if(
+                                format!(
+                                    "{}{}{}",
+                                    VERTICAL_RIGHT_BAR,
+                                    HORIZONTAL_BAR.repeat(char_length - 2),
+                                    TOP_LEFT_CORNER
+                                ),
+                                self.color.unwrap(),
+                                in_ansi,
+                            ));
                         }
+                    } else {
+                        // No message.
+                        buffer.push_str(&color_bold_if(
+                            format!(
+                                "{}{}{}",
+                                TOP_RIGHT_CORNER,
+                                HORIZONTAL_BAR.repeat(char_length - 2),
+                                TOP_LEFT_CORNER
+                            ),
+                            self.color.unwrap(),
+                            in_ansi,
+                        ));
                     }
                 }
             }
         }
     }
 
-    fn print_middle_arrow_line(
-        &self,
-        buffer: &mut String,
-        document: &DocumentBlock,
-        in_ansi: bool,
-    ) {
-        if in_ansi {
-            // TODO
-        } else {
-            let char_length = self.char_len();
+    fn print_middle_arrow_line(&self, buffer: &mut String, in_ansi: bool) {
+        let char_length = self.char_len();
 
-            match char_length {
-                0 | 1 => {
-                    if self.message.is_some() {
-                        buffer.push_str(VERTICAL_BAR);
-                    } else {
-                        buffer.push(' ');
-                    }
+        match char_length {
+            0 | 1 => {
+                if self.message.is_some() {
+                    buffer.push_str(&color_bold_if(
+                        VERTICAL_BAR.to_string(),
+                        self.color.unwrap(),
+                        in_ansi,
+                    ));
+                } else {
+                    buffer.push(' ');
                 }
-                _ => {
-                    if self.message.is_some() {
-                        buffer.push_str(VERTICAL_BAR);
-                        buffer.push_str(&" ".repeat(char_length - 1));
-                    } else {
-                        buffer.push_str(&" ".repeat(char_length));
-                    }
+            }
+            _ => {
+                if self.message.is_some() {
+                    buffer.push_str(&color_bold_if(
+                        VERTICAL_BAR.to_string(),
+                        self.color.unwrap(),
+                        in_ansi,
+                    ));
+                    buffer.push_str(&" ".repeat(char_length - 1));
+                } else {
+                    buffer.push_str(&" ".repeat(char_length));
                 }
             }
         }
@@ -869,72 +917,49 @@ impl HighlightedSection {
     fn print_last_arrow_line(
         &self,
         buffer: &mut String,
-        document: &DocumentBlock,
         in_ansi: bool,
         message_column: usize,
         max_line_num_digits: usize,
     ) {
-        if in_ansi {
-            // TODO
-        } else {
-            let char_length = self.char_len();
-
-            match char_length {
-                0 | 1 => {
-                    buffer.push_str(TOP_RIGHT_CORNER);
-                    self.print_message(
-                        buffer,
-                        document,
-                        in_ansi,
-                        message_column,
-                        max_line_num_digits,
-                    );
-                }
-                _ => {
-                    buffer.push_str(TOP_RIGHT_CORNER);
-                    self.print_message(
-                        buffer,
-                        document,
-                        in_ansi,
-                        message_column,
-                        max_line_num_digits,
-                    );
-                }
-            }
-        }
+        buffer.push_str(&color_bold_if(
+            TOP_RIGHT_CORNER.to_string(),
+            self.color.unwrap(),
+            in_ansi,
+        ));
+        self.print_message(buffer, in_ansi, message_column, max_line_num_digits);
     }
 
     fn print_message(
         &self,
         buffer: &mut String,
-        document: &DocumentBlock,
         in_ansi: bool,
         message_column: usize,
         max_line_num_digits: usize,
     ) {
-        if in_ansi {
-            // TODO
+        let message = self
+            .message
+            .as_ref()
+            .expect("Cannot call print_last_arrow_line without a message");
+
+        let line_start_offset = match memchr::memrchr(b'\n', buffer.as_bytes()) {
+            Some(v) => v + 1,
+            None => 0,
+        };
+        let line_content = &buffer[line_start_offset..];
+        let mut num_chars = if in_ansi {
+            bytecount::num_chars(remove_ansi_escapes(line_content).as_bytes())
         } else {
-            let message = self
-                .message
-                .as_ref()
-                .expect("Cannot call print_last_arrow_line without a message");
+            bytecount::num_chars(line_content.as_bytes())
+        };
 
-            let x = buffer.as_str();
-            let line_start_offset = match memchr::memrchr(b'\n', buffer.as_bytes()) {
-                Some(v) => v + 1,
-                None => 0,
-            };
-            let line_content = &buffer[line_start_offset..];
-            let mut num_chars = bytecount::num_chars(line_content.as_bytes());
+        // Remove constant part.
+        num_chars -= 6 + max_line_num_digits;
 
-            // Remove constant part.
-            num_chars -= 6 + max_line_num_digits;
+        let bars = HORIZONTAL_BAR.repeat(message_column - num_chars);
 
-            buffer.push_str(&HORIZONTAL_BAR.repeat(message_column - num_chars));
-            buffer.push(' ');
-            buffer.push_str(&remove_jump_lines(message));
-        }
+        buffer.push_str(&color_bold_if(bars, self.color.unwrap(), in_ansi));
+        buffer.push(' ');
+        buffer.push_str(&remove_jump_lines(message));
     }
 }
 
@@ -944,6 +969,8 @@ impl HighlightedSection {
 
 #[cfg(test)]
 mod tests {
+    use crate::LogLevel;
+
     use super::*;
 
     // This test covers every branch in the code.
@@ -1027,12 +1054,12 @@ mod tests {
             "┌┬─\n\
              │└> at /path/t o/file.test\n\
              │\n\
-             │   1  This\n\
+             │   1  This \n\
              │      └─────>\n\
              │   3  document\n\
              │     >───────┘\n\
              ├─\n\
-             │   1  This\n\
+             │   1  This \n\
              │      ├───┘└─ b\n\
              │      └────── a\n\
              │   2  is a\n\
@@ -1085,11 +1112,276 @@ mod tests {
                 .highlight_section_str(3..4, Some("Comment"), Some(Color::Red))
                 .highlight_section_str(5..7, Some("Comment jump line"), Some(Color::Red))
                 .highlight_section_str(7..8, Some("A"), Some(Color::Red))
-                .highlight_section_str(8..20, Some("B"), Some(Color::Red))
-                .highlight_section_str(20..21, Some("C"), Some(Color::Red))
+                .highlight_section_str(8..20, Some("B"), None)
+                .highlight_section_str(20..21, Some("C"), None)
         });
         let text = log.to_ansi_text();
 
-        println!("{}", text)
+        let start_path_title = Style::new(LogLevel::info().color()).bold().paint("┌┬─");
+        let title_prefix = Style::new(LogLevel::info().color()).bold().paint("││  ");
+        let end = Style::new(LogLevel::info().color()).bold().paint("└─");
+        let path = Style::new(LogLevel::info().color()).bold().paint("│└>");
+        let path_at = Style::new(LogLevel::info().color()).bold().paint("at");
+        let single_bar = Style::new(LogLevel::info().color())
+            .bold()
+            .paint(VERTICAL_BAR);
+        assert_eq!(
+            text,
+            format!(
+                "{} This\n\
+                 {}is a\n\
+                 {}title\n\
+                 {} {} /path/t o/file.test\n\
+                 {}\n\
+                 {}   {}  F{}{}{}t{}{}\n\
+                 {}       {}{}{} {}\n\
+                 {}       {} {}{}{} Comment\n\
+                 {}       {} {}{} Comment cursor\n\
+                 {}       {}{} Comment multiline\n\
+                 {}   {}  {}{}{}{}\n\
+                 {}     {}{}{}\n\
+                 {}      {}{}{} A\n\
+                 {}      {}{} Comment jump line\n\
+                 {}   {}  {}{}\n\
+                 {}     {}{}{} C\n\
+                 {}      {}{} B\n\
+                 {} This\n   is an\n   end message",
+                start_path_title,
+                title_prefix,
+                title_prefix,
+                path,
+                path_at,
+                single_bar,
+                single_bar,
+                Style::new(Color::Blue).bold().paint("1"),
+                Style::new(Color::Blue).bold().paint("ir"),
+                Style::new(Color::Magenta).bold().paint(MIDDLE_DOT),
+                Style::new(Color::Red).bold().paint("s"),
+                Style::new(Color::Red).bold().paint(""),
+                Style::new(Color::Red).bold().paint(NEW_LINE),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("├┘"),
+                Style::new(Color::Magenta).bold().paint("│"),
+                Style::new(Color::Red).bold().paint("│"),
+                Style::new(Color::Red).bold().paint("└>"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("│"),
+                Style::new(Color::Magenta).bold().paint("│"),
+                Style::new(Color::Red).bold().paint("└"),
+                Style::new(Color::Red).bold().paint("───"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("│"),
+                Style::new(Color::Magenta).bold().paint("└"),
+                Style::new(Color::Magenta).bold().paint("────"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("└"),
+                Style::new(Color::Blue).bold().paint("──────"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("2"),
+                Style::new(Color::Red).bold().paint("t"),
+                Style::new(Color::Red).bold().paint("e"),
+                Style::new(Color::Blue).bold().paint("st"),
+                Style::new(Color::Blue).bold().paint(NEW_LINE),
+                single_bar,
+                Style::new(Color::Red).bold().paint(">┤"),
+                Style::new(Color::Red).bold().paint("│"),
+                Style::new(Color::Blue).bold().paint("└──>"),
+                single_bar,
+                Style::new(Color::Red).bold().paint("│"),
+                Style::new(Color::Red).bold().paint("└"),
+                Style::new(Color::Red).bold().paint("────"),
+                single_bar,
+                Style::new(Color::Red).bold().paint("└"),
+                Style::new(Color::Red).bold().paint("─────"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("4"),
+                Style::new(Color::Blue).bold().paint("lin"),
+                Style::new(Color::Magenta).bold().paint("e"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint(">┬─┘"),
+                Style::new(Color::Magenta).bold().paint("└"),
+                Style::new(Color::Magenta).bold().paint("──"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("└"),
+                Style::new(Color::Blue).bold().paint("─────"),
+                end
+            )
+        );
+
+        let text = "Second\ntest";
+        let log = Log::info().document_str(text, |document| {
+            document
+                .show_new_line_chars(true)
+                .highlight_section_str(1..2, None, None)
+                .highlight_section_str(3..5, Some("1+ chars with message"), None)
+                .highlight_section_str(8..10, None, None)
+        });
+        let text = log.to_ansi_text();
+
+        let start = Style::new(LogLevel::info().color()).bold().paint("┌─");
+        assert_eq!(
+            text,
+            format!(
+                "{}\n\
+                 {}   {}  S{}c{}d↩\n\
+                 {}       {} {}{} 1+ chars with message\n\
+                 {}   {}  t{}t\n\
+                 {}       {}\n\
+                 {}",
+                start,
+                single_bar,
+                Style::new(Color::Blue).bold().paint("1"),
+                Style::new(Color::Blue).bold().paint("e"),
+                Style::new(Color::Magenta).bold().paint("on"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("^"),
+                Style::new(Color::Magenta).bold().paint("└┴"),
+                Style::new(Color::Magenta).bold().paint("──"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("2"),
+                Style::new(Color::Blue).bold().paint("es"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("└┘"),
+                end
+            )
+        );
+
+        let text = "This\r\nis a\ndocument";
+        let log = Log::info().document_str(text, |document| {
+            document
+                .file_path_str("/path/t\no/file.test")
+                .highlight_section_str(0..text.len(), None, None)
+                .related_document(|document| {
+                    document
+                        .highlight_section_str(0..5, Some("a"), None)
+                        .highlight_section_str(5..6, Some("b"), None)
+                        .highlight_section_str(6..7, Some("c"), None)
+                })
+        });
+        let text = log.to_ansi_text();
+
+        assert_eq!(
+            text,
+            format!(
+                "{}\n\
+                 {} {} /path/t o/file.test\n\
+                 {}\n\
+                 {}   {}  {} \n\
+                 {}      {}\n\
+                 {}   {}  {}\n\
+                 {}     {}\n\
+                 {}\n\
+                 {}   {}  {} {}\n\
+                 {}      {}{}{} b\n\
+                 {}      {}{} a\n\
+                 {}   {}  {}s a\n\
+                 {}      {}{} c\n\
+                 {}",
+                start_path_title,
+                path,
+                path_at,
+                single_bar,
+                single_bar,
+                Style::new(Color::Blue).bold().paint("1"),
+                Style::new(Color::Blue).bold().paint("This"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("└─────>"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("3"),
+                Style::new(Color::Blue).bold().paint("document"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint(">───────┘"),
+                Style::new(Color::Blue).bold().paint("├─"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("1"),
+                Style::new(Color::Blue).bold().paint("This"),
+                Style::new(Color::Magenta).bold().paint(""),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("├───┘"),
+                Style::new(Color::Magenta).bold().paint("└"),
+                Style::new(Color::Magenta).bold().paint("─"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("└"),
+                Style::new(Color::Blue).bold().paint("──────"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("2"),
+                Style::new(Color::Blue).bold().paint("i"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("└"),
+                Style::new(Color::Blue).bold().paint("──"),
+                end
+            )
+        );
+
+        let text = "This\nis a\ndocument";
+        let log = Log::info().document_str(text, |document| {
+            document
+                .file_path_str("/path/to/file.test")
+                .highlight_cursor_str(0, Some("x0"), None)
+                .highlight_cursor_str(1, None, None)
+                .highlight_cursor_str(2, Some("x2"), None)
+                .highlight_cursor_str(3, None, None)
+                .highlight_cursor_str(4, Some("x4"), None)
+                .highlight_cursor_str(5, Some("x5"), None)
+                .highlight_cursor_str(6, None, None)
+                .highlight_cursor_str(7, Some("x7"), None)
+        });
+        let text = log.to_ansi_text();
+
+        assert_eq!(
+            text,
+            format!(
+                "{}\n\
+                 {} {} /path/to/file.test\n\
+                 {}\n\
+                 {}   {}  {}T{}h{}i{}s{}\n\
+                 {}      {} {} {} {} {}{} x4\n\
+                 {}      {}   {}{} x2\n\
+                 {}      {}{} x0\n\
+                 {}   {}  {}i{}s{} a\n\
+                 {}      {} {} {}{} x7\n\
+                 {}      {}{} x5\n\
+                 {}",
+                start_path_title,
+                path,
+                path_at,
+                single_bar,
+                single_bar,
+                Style::new(Color::Blue).bold().paint("1"),
+                Style::new(Color::Blue).bold().paint("·"),
+                Style::new(Color::Magenta).bold().paint("·"),
+                Style::new(Color::Blue).bold().paint("·"),
+                Style::new(Color::Magenta).bold().paint("·"),
+                Style::new(Color::Blue).bold().paint("·"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("│"),
+                Style::new(Color::Magenta).bold().paint("^"),
+                Style::new(Color::Blue).bold().paint("│"),
+                Style::new(Color::Magenta).bold().paint("^"),
+                Style::new(Color::Blue).bold().paint("└"),
+                Style::new(Color::Blue).bold().paint("──"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("│"),
+                Style::new(Color::Blue).bold().paint("└"),
+                Style::new(Color::Blue).bold().paint("──────"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("└"),
+                Style::new(Color::Blue).bold().paint("──────────"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("2"),
+                Style::new(Color::Magenta).bold().paint("·"),
+                Style::new(Color::Blue).bold().paint("·"),
+                Style::new(Color::Magenta).bold().paint("·"),
+                single_bar,
+                Style::new(Color::Magenta).bold().paint("│"),
+                Style::new(Color::Blue).bold().paint("^"),
+                Style::new(Color::Magenta).bold().paint("└"),
+                Style::new(Color::Magenta).bold().paint("──"),
+                single_bar,
+                Style::new(Color::Magenta).bold().paint("└"),
+                Style::new(Color::Magenta).bold().paint("──────"),
+                end,
+            )
+        );
     }
 }

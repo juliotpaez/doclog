@@ -42,6 +42,12 @@ pub fn color_bold_if(text: String, color: Color, condition: bool) -> String {
     }
 }
 
+/// Removes the ANSI escaping characters.
+pub fn remove_ansi_escapes(text: &str) -> String {
+    let plain_bytes = strip_ansi_escapes::strip(&text).unwrap();
+    String::from_utf8(plain_bytes).unwrap()
+}
+
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------

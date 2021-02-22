@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use yansi::Style;
-
 use crate::blocks::StackTraceBlock;
 use crate::constants::{
     BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, TOP_RIGHT_CORNER, VERTICAL_BAR, VERTICAL_RIGHT_BAR,
