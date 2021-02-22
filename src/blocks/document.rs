@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::option::Option::Some;
 use std::sync::Arc;
 
-use yansi::Color;
+use yansi::{Color, Style};
 
 use crate::constants::{
     BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, HORIZONTAL_BOTTOM_BAR, HORIZONTAL_TOP_BAR, MIDDLE_DOT,
@@ -219,7 +219,7 @@ impl DocumentBlock {
     }
 
     /// Sets a related block to the block.
-    pub fn related_block<F>(mut self, builder: F) -> Self
+    pub fn related_document<F>(mut self, builder: F) -> Self
     where
         F: FnOnce(DocumentBlock) -> DocumentBlock,
     {
@@ -247,7 +247,93 @@ impl DocumentBlock {
         is_related_block: bool,
     ) {
         if in_ansi {
-            // TODO
+            // // FIRST LINE + TITLE
+            // if is_related_block {
+            //     buffer.push_str(
+            //         Style::new(log.level().color())
+            //             .bold()
+            //             .paint(format!("{}{}", VERTICAL_RIGHT_BAR, HORIZONTAL_BAR))
+            //             .to_string()
+            //             .as_str(),
+            //     );
+            //
+            //     if let Some(title) = &self.title {
+            //         let indent = format!(
+            //             "{}  ",
+            //             Style::new(log.level().color()).bold().paint(VERTICAL_BAR)
+            //         );
+            //         let title = indent_text(&title, &indent, false);
+            //         buffer.push_str(" ");
+            //         buffer.push_str(title.as_str());
+            //     }
+            // } else {
+            //     if self.file_path.is_some() {
+            //         buffer.push_str(
+            //             Style::new(log.level().color())
+            //                 .bold()
+            //                 .paint(format!(
+            //                     "{}{}{}",
+            //                     BOTTOM_RIGHT_CORNER, HORIZONTAL_BOTTOM_BAR, HORIZONTAL_BAR
+            //                 ))
+            //                 .to_string()
+            //                 .as_str(),
+            //         );
+            //     } else {
+            //         buffer.push_str(
+            //             Style::new(log.level().color())
+            //                 .bold()
+            //                 .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR))
+            //                 .to_string()
+            //                 .as_str(),
+            //         );
+            //     }
+            //
+            //     if let Some(title) = &self.title {
+            //         let title = if self.file_path.is_some() {
+            //             indent_text(
+            //                 &title,
+            //                 format!("{}{}  ", VERTICAL_BAR, VERTICAL_BAR).as_str(),
+            //                 false,
+            //             )
+            //         } else {
+            //             indent_text(&title, format!("{}  ", VERTICAL_BAR).as_str(), false)
+            //         };
+            //         buffer.push_str(" ");
+            //         buffer.push_str(title.as_str());
+            //     }
+            //
+            //     // FILE
+            //     if let Some(file_path) = &self.file_path {
+            //         let file_path = remove_jump_lines(file_path.as_str());
+            //
+            //         buffer.push('\n');
+            //         buffer.push_str(VERTICAL_BAR);
+            //         buffer.push_str(TOP_RIGHT_CORNER);
+            //         buffer.push_str(RIGHT_POINTER);
+            //         buffer.push_str(" at ");
+            //         buffer.push_str(file_path.as_str());
+            //     }
+            // }
+            //
+            // // TODO SECTIONS
+            //
+            // // RELATED BLOCK
+            // if let Some(related_block) = &self.related_block {
+            //     buffer.push('\n');
+            //     related_block.to_text_with_options(log, in_ansi, buffer, true);
+            // }
+            //
+            // // FINAL LINE + END MESSAGE
+            // if !is_related_block {
+            //     buffer.push('\n');
+            //     buffer.push_str(TOP_RIGHT_CORNER);
+            //     buffer.push_str(HORIZONTAL_BAR);
+            //
+            //     if let Some(end_message) = &self.end_message {
+            //         buffer.push_str(" ");
+            //         buffer.push_str(indent_text(end_message.as_str(), "   ", false).as_str());
+            //     }
+            // }
         } else {
             // FIRST LINE + TITLE
             if is_related_block {
@@ -307,7 +393,7 @@ impl DocumentBlock {
                     &normalized_sections.last().unwrap().to,
                 )
                 .line;
-                let max_line_digits = last_line.to_string().len();
+                let max_line_num_digits = last_line.to_string().len();
 
                 // EMPTY LINE
                 // Only if file path is present or the title is multiline.
@@ -336,7 +422,9 @@ impl DocumentBlock {
                     let last_section = sections_in_same_line.last().unwrap();
                     let number_of_cursors =
                         sections_in_same_line.iter().filter(|s| s.is_cursor).count();
-                    let message_column = last_section.to.column + number_of_cursors + 1;
+                    let mut message_column = last_section.to.column + number_of_cursors + 1;
+
+                    println!("{}", message_column);
 
                     // CONTENT LINE
                     buffer.push('\n');
@@ -346,7 +434,7 @@ impl DocumentBlock {
                         format!(
                             "{:>width$}",
                             last_section.from.line,
-                            width = max_line_digits
+                            width = max_line_num_digits
                         )
                         .as_str(),
                     );
@@ -383,7 +471,7 @@ impl DocumentBlock {
                     );
 
                     // Print lines.
-                    let digits_as_whitespace = " ".repeat(max_line_digits);
+                    let digits_as_whitespace = " ".repeat(max_line_num_digits);
 
                     for arrow_line in 0..arrow_lines_height {
                         let mut arrow_lines_height = arrow_lines_height;
@@ -396,12 +484,10 @@ impl DocumentBlock {
 
                         // SECTIONS
                         let mut prev_cursor = start_line_cursor.clone();
-                        let mut previous_cursors = 0;
-                        for section in &sections_in_same_line {
-                            if section.is_cursor {
-                                previous_cursors += 1;
-                            }
-
+                        for section in (0..sections_in_same_line.len() - arrow_line)
+                            .into_iter()
+                            .map(|i| &sections_in_same_line[i])
+                        {
                             // PREVIOUS CONTENT
                             buffer.push_str(
                                 &" ".repeat(section.from.char_offset - prev_cursor.char_offset),
@@ -415,13 +501,8 @@ impl DocumentBlock {
                                 arrow_line,
                                 arrow_lines_height,
                                 message_column,
-                                previous_cursors,
+                                max_line_num_digits,
                             );
-
-                            // Exit on last.
-                            if arrow_line + 1 == arrow_lines_height {
-                                break;
-                            }
 
                             if section.message.is_some() {
                                 arrow_lines_height -= 1;
@@ -589,6 +670,10 @@ impl HighlightedSection {
         self.from.slice(text, &self.to)
     }
 
+    pub fn is_new_line(&self) -> bool {
+        self.from.char_offset == self.to.char_offset && !self.is_cursor
+    }
+
     // METHODS ----------------------------------------------------------------
 
     fn print_content_section(&self, document: &DocumentBlock, in_ansi: bool, buffer: &mut String) {
@@ -612,7 +697,7 @@ impl HighlightedSection {
         arrow_line: usize,
         arrow_lines_height: usize,
         message_column: usize,
-        previous_cursors: usize,
+        max_line_num_digits: usize,
     ) {
         if arrow_line + 1 > arrow_lines_height {
             return;
@@ -625,10 +710,16 @@ impl HighlightedSection {
                 in_ansi,
                 message_column,
                 arrow_lines_height == 1,
-                previous_cursors,
+                max_line_num_digits,
             )
-        } else if arrow_line + 1 == arrow_lines_height {
-            self.print_last_arrow_line(buffer, document, in_ansi, message_column, previous_cursors)
+        } else if self.message.is_some() && arrow_line + 1 == arrow_lines_height {
+            self.print_last_arrow_line(
+                buffer,
+                document,
+                in_ansi,
+                message_column,
+                max_line_num_digits,
+            )
         } else {
             self.print_middle_arrow_line(buffer, document, in_ansi);
         }
@@ -641,7 +732,7 @@ impl HighlightedSection {
         in_ansi: bool,
         message_column: usize,
         print_message: bool,
-        previous_cursors: usize,
+        max_line_num_digits: usize,
     ) {
         if in_ansi {
             // TODO
@@ -664,12 +755,13 @@ impl HighlightedSection {
                         }
 
                         buffer.push_str(HORIZONTAL_TOP_BAR);
-                        buffer.push_str(
-                            &HORIZONTAL_BAR
-                                .repeat(message_column - self.to.column - previous_cursors),
+                        self.print_message(
+                            buffer,
+                            document,
+                            in_ansi,
+                            message_column,
+                            max_line_num_digits,
                         );
-                        buffer.push(' ');
-                        buffer.push_str(&remove_jump_lines(message));
                     } else {
                         // With message at other line.
                         if char_length <= 1 {
@@ -695,11 +787,13 @@ impl HighlightedSection {
                             if print_message {
                                 // With message at first line.
                                 buffer.push_str(TOP_RIGHT_CORNER);
-                                buffer.push_str(&HORIZONTAL_BAR.repeat(
-                                    message_column - self.to.column + 1 - previous_cursors,
-                                ));
-                                buffer.push(' ');
-                                buffer.push_str(&remove_jump_lines(message));
+                                self.print_message(
+                                    buffer,
+                                    document,
+                                    in_ansi,
+                                    message_column,
+                                    max_line_num_digits,
+                                );
                             } else {
                                 // With message at other line.
                                 buffer.push_str(VERTICAL_BAR);
@@ -716,11 +810,13 @@ impl HighlightedSection {
                                 buffer.push_str(TOP_RIGHT_CORNER);
                                 buffer.push_str(&HORIZONTAL_BAR.repeat(char_length - 2));
                                 buffer.push_str(HORIZONTAL_TOP_BAR);
-                                buffer.push_str(&HORIZONTAL_BAR.repeat(
-                                    message_column - self.to.column + 1 - previous_cursors,
-                                ));
-                                buffer.push(' ');
-                                buffer.push_str(&remove_jump_lines(message));
+                                self.print_message(
+                                    buffer,
+                                    document,
+                                    in_ansi,
+                                    message_column,
+                                    max_line_num_digits,
+                                );
                             } else {
                                 // With message at other line.
                                 buffer.push_str(VERTICAL_RIGHT_BAR);
@@ -752,11 +848,19 @@ impl HighlightedSection {
 
             match char_length {
                 0 | 1 => {
-                    buffer.push_str(VERTICAL_BAR);
+                    if self.message.is_some() {
+                        buffer.push_str(VERTICAL_BAR);
+                    } else {
+                        buffer.push(' ');
+                    }
                 }
                 _ => {
-                    buffer.push_str(VERTICAL_BAR);
-                    buffer.push_str(&" ".repeat(char_length - 1));
+                    if self.message.is_some() {
+                        buffer.push_str(VERTICAL_BAR);
+                        buffer.push_str(&" ".repeat(char_length - 1));
+                    } else {
+                        buffer.push_str(&" ".repeat(char_length));
+                    }
                 }
             }
         }
@@ -768,7 +872,7 @@ impl HighlightedSection {
         document: &DocumentBlock,
         in_ansi: bool,
         message_column: usize,
-        previous_cursors: usize,
+        max_line_num_digits: usize,
     ) {
         if in_ansi {
             // TODO
@@ -777,33 +881,59 @@ impl HighlightedSection {
 
             match char_length {
                 0 | 1 => {
-                    let message = self
-                        .message
-                        .as_ref()
-                        .expect("Cannot call print_last_arrow_line without a message");
                     buffer.push_str(TOP_RIGHT_CORNER);
-                    buffer.push_str(
-                        &HORIZONTAL_BAR
-                            .repeat(message_column - self.to.column + 1 - previous_cursors),
+                    self.print_message(
+                        buffer,
+                        document,
+                        in_ansi,
+                        message_column,
+                        max_line_num_digits,
                     );
-                    buffer.push(' ');
-                    buffer.push_str(&remove_jump_lines(message));
                 }
                 _ => {
-                    let message = self
-                        .message
-                        .as_ref()
-                        .expect("Cannot call print_last_arrow_line without a message");
                     buffer.push_str(TOP_RIGHT_CORNER);
-                    buffer.push_str(
-                        &HORIZONTAL_BAR.repeat(
-                            message_column - self.to.column + char_length - previous_cursors,
-                        ),
+                    self.print_message(
+                        buffer,
+                        document,
+                        in_ansi,
+                        message_column,
+                        max_line_num_digits,
                     );
-                    buffer.push(' ');
-                    buffer.push_str(&remove_jump_lines(message));
                 }
             }
+        }
+    }
+
+    fn print_message(
+        &self,
+        buffer: &mut String,
+        document: &DocumentBlock,
+        in_ansi: bool,
+        message_column: usize,
+        max_line_num_digits: usize,
+    ) {
+        if in_ansi {
+            // TODO
+        } else {
+            let message = self
+                .message
+                .as_ref()
+                .expect("Cannot call print_last_arrow_line without a message");
+
+            let x = buffer.as_str();
+            let line_start_offset = match memchr::memrchr(b'\n', buffer.as_bytes()) {
+                Some(v) => v + 1,
+                None => 0,
+            };
+            let line_content = &buffer[line_start_offset..];
+            let mut num_chars = bytecount::num_chars(line_content.as_bytes());
+
+            // Remove constant part.
+            num_chars -= 6 + max_line_num_digits;
+
+            buffer.push_str(&HORIZONTAL_BAR.repeat(message_column - num_chars));
+            buffer.push(' ');
+            buffer.push_str(&remove_jump_lines(message));
         }
     }
 }
@@ -823,6 +953,9 @@ mod tests {
         let log = Log::info().document_str(text, |document| {
             document
                 .show_new_line_chars(true)
+                .title_str("This\nis a\ntitle")
+                .file_path_str("/path/t\no/file.test")
+                .end_message_str("This\nis an\nend message")
                 .highlight_section_str(1..3, Some("Comment\nmultiline"), None)
                 .highlight_cursor_str(3, Some("Comment cursor"), None)
                 .highlight_section_str(3..4, Some("Comment"), Some(Color::Red))
@@ -835,7 +968,11 @@ mod tests {
 
         assert_eq!(
             &text,
-            "┌─\n\
+            "┌┬─ This\n\
+             ││  is a\n\
+             ││  title\n\
+             │└> at /path/t o/file.test\n\
+             │\n\
              │   1  Fir·st↩\n\
              │       ├┘││ └>\n\
              │       │ │└─── Comment\n\
@@ -848,7 +985,7 @@ mod tests {
              │   4  line\n\
              │     >┬─┘└── C\n\
              │      └───── B\n\
-             └─"
+             └─ This\n   is an\n   end message"
         );
 
         let text = "Second\ntest";
@@ -865,45 +1002,71 @@ mod tests {
             &text,
             "┌─\n\
              │   1  Second↩\n\
-             │       ^\n\
+             │       ^ └┴── 1+ chars with message\n\
              │   2  test\n\
              │       └┘\n\
              └─"
         );
 
-        let text = "This\na\ndocument";
+        let text = "This\r\nis a\ndocument";
         let log = Log::info().document_str(text, |document| {
-            document.highlight_section_str(0..text.len(), None, None)
+            document
+                .file_path_str("/path/t\no/file.test")
+                .highlight_section_str(0..text.len(), None, None)
+                .related_document(|document| {
+                    document
+                        .highlight_section_str(0..5, Some("a"), None)
+                        .highlight_section_str(5..6, Some("b"), None)
+                        .highlight_section_str(6..7, Some("c"), None)
+                })
         });
         let text = log.to_plain_text();
 
         assert_eq!(
             &text,
-            "┌─\n\
+            "┌┬─\n\
+             │└> at /path/t o/file.test\n\
+             │\n\
              │   1  This\n\
-             │      └────>\n\
+             │      └─────>\n\
              │   3  document\n\
              │     >───────┘\n\
+             ├─\n\
+             │   1  This\n\
+             │      ├───┘└─ b\n\
+             │      └────── a\n\
+             │   2  is a\n\
+             │      └── c\n\
              └─"
         );
 
-        let text = "This\r\na\ndocument";
+        let text = "This\nis a\ndocument";
         let log = Log::info().document_str(text, |document| {
             document
-                .highlight_section_str(0..5, Some("a"), None)
-                .highlight_section_str(5..6, Some("b"), None)
-                .highlight_section_str(6..7, Some("c"), None)
+                .file_path_str("/path/to/file.test")
+                .highlight_cursor_str(0, Some("x0"), None)
+                .highlight_cursor_str(1, None, None)
+                .highlight_cursor_str(2, Some("x2"), None)
+                .highlight_cursor_str(3, None, None)
+                .highlight_cursor_str(4, Some("x4"), None)
+                .highlight_cursor_str(5, Some("x5"), None)
+                .highlight_cursor_str(6, None, None)
+                .highlight_cursor_str(7, Some("x7"), None)
         });
         let text = log.to_plain_text();
 
         assert_eq!(
             &text,
-            "┌─\n\
-             │   1  This\n\
-             │      ├───┘└── b\n\
-             │      └────── a\n\
-             │   2  a\n\
-             │      └── c\n\
+            "┌┬─\n\
+             │└> at /path/to/file.test\n\
+             │\n\
+             │   1  ·T·h·i·s·\n\
+             │      │ ^ │ ^ └── x4\n\
+             │      │   └────── x2\n\
+             │      └────────── x0\n\
+             │   2  ·i·s· a\n\
+             │      │ ^ └── x7\n\
+             │      └────── x5\n\
              └─"
         );
     }
@@ -914,6 +1077,9 @@ mod tests {
         let log = Log::info().document_str(text, |document| {
             document
                 .show_new_line_chars(true)
+                .title_str("This\nis a\ntitle")
+                .file_path_str("/path/t\no/file.test")
+                .end_message_str("This\nis an\nend message")
                 .highlight_section_str(1..3, Some("Comment\nmultiline"), None)
                 .highlight_cursor_str(3, Some("Comment cursor"), None)
                 .highlight_section_str(3..4, Some("Comment"), Some(Color::Red))
