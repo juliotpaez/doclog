@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use yansi::{Color, Style};
 
-use crate::utils::text::{indent_text, remove_jump_lines};
+use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
 use crate::Log;
 
 /// A block that prints a note.
@@ -63,24 +63,20 @@ impl NoteBlock {
             false,
         );
 
-        if in_ansi {
-            buffer.push_str(
-                format!(
-                    "{} {}{}",
-                    Style::new(log.level().color()).bold().paint("="),
-                    Style::new(Color::Unset).bold().paint(title),
-                    Style::new(log.level().color()).bold().paint(":"),
-                )
-                .as_str(),
-            );
-            buffer.push_str(" ");
-            buffer.push_str(message.as_str());
-        } else {
-            buffer.push_str("= ");
-            buffer.push_str(title.as_str());
-            buffer.push_str(": ");
-            buffer.push_str(message.as_str());
-        }
+        buffer.push_str(&color_bold_if(
+            "=".to_string(),
+            log.level().color(),
+            in_ansi,
+        ));
+        buffer.push(' ');
+        buffer.push_str(&color_bold_if(title.to_string(), Color::Unset, in_ansi));
+        buffer.push_str(&color_bold_if(
+            ":".to_string(),
+            log.level().color(),
+            in_ansi,
+        ));
+        buffer.push(' ');
+        buffer.push_str(message.as_str());
     }
 }
 

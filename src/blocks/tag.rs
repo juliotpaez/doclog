@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use yansi::{Color, Style};
 
-use crate::utils::text::remove_jump_lines;
+use crate::utils::text::{color_bold_if, remove_jump_lines};
 use crate::Log;
 
 /// A block that prints a tag.
@@ -42,19 +42,13 @@ impl TagBlock {
     pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
         let tag = remove_jump_lines(&self.tag);
 
-        if in_ansi {
-            buffer.push_str(
-                format!(
-                    "{} {}",
-                    Style::new(log.level().color()).bold().paint("="),
-                    Style::new(Color::Unset).bold().paint(tag)
-                )
-                .as_str(),
-            );
-        } else {
-            buffer.push_str("= ");
-            buffer.push_str(tag.as_str());
-        }
+        buffer.push_str(&color_bold_if(
+            "=".to_string(),
+            log.level().color(),
+            in_ansi,
+        ));
+        buffer.push(' ');
+        buffer.push_str(&color_bold_if(tag.to_string(), Color::Unset, in_ansi));
     }
 }
 

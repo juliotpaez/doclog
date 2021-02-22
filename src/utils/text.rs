@@ -1,3 +1,5 @@
+use yansi::{Color, Style};
+
 /// Indents `text` prefixing each line with `indent`.
 /// If `indent_first` is `true`, the first line is also prefixed.
 pub fn indent_text(text: &str, indent: &str, indent_first: bool) -> String {
@@ -29,6 +31,15 @@ pub fn remove_jump_lines(text: &str) -> String {
     }
 
     buffer
+}
+
+/// Formats a text only if `condition` is `true`.
+pub fn color_bold_if(text: String, color: Color, condition: bool) -> String {
+    if condition {
+        Style::new(color).bold().paint(text).to_string()
+    } else {
+        text
+    }
 }
 
 // ----------------------------------------------------------------------------

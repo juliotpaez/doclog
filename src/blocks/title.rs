@@ -3,7 +3,7 @@ use std::sync::Arc;
 use chrono::{SecondsFormat, Utc};
 use yansi::{Color, Style};
 
-use crate::utils::text::indent_text;
+use crate::utils::text::{color_bold_if, indent_text};
 use crate::Log;
 
 /// A block that prints a title.
@@ -91,90 +91,52 @@ impl TitleBlock {
             false,
         );
 
-        if in_ansi {
-            buffer.push_str(
-                Style::new(log.level().color())
-                    .bold()
-                    .paint(tag)
-                    .to_string()
-                    .as_str(),
-            );
+        buffer.push_str(&color_bold_if(
+            tag.to_string(),
+            log.level().color(),
+            in_ansi,
+        ));
+        buffer.push_str(" ");
+
+        if let Some(date) = date {
+            buffer.push_str(&color_bold_if(
+                "at".to_string(),
+                log.level().color(),
+                in_ansi,
+            ));
             buffer.push_str(" ");
-
-            if let Some(date) = date {
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint("at")
-                        .to_string()
-                        .as_str(),
-                );
-                buffer.push_str(" ");
-                buffer.push_str(
-                    Style::new(Color::Unset)
-                        .bold()
-                        .paint(date.as_str())
-                        .to_string()
-                        .as_str(),
-                );
-                buffer.push_str(" ");
-            }
-
-            if let Some(thread) = thread {
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint("in")
-                        .to_string()
-                        .as_str(),
-                );
-                buffer.push_str(" ");
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint("thread")
-                        .to_string()
-                        .as_str(),
-                );
-                buffer.push_str(" ");
-                buffer.push_str(
-                    Style::new(Color::Unset)
-                        .bold()
-                        .paint(format!("\"{}\"", thread))
-                        .to_string()
-                        .as_str(),
-                );
-                buffer.push_str(" ");
-            }
-
-            buffer.push_str(
-                Style::new(log.level().color())
-                    .bold()
-                    .paint("-")
-                    .to_string()
-                    .as_str(),
-            );
+            buffer.push_str(&color_bold_if(date, Color::Unset, in_ansi));
             buffer.push_str(" ");
-            buffer.push_str(message.as_str());
-        } else {
-            buffer.push_str(tag);
-            buffer.push_str(" ");
-
-            if let Some(date) = date {
-                buffer.push_str("at ");
-                buffer.push_str(date.as_str());
-                buffer.push_str(" ");
-            }
-
-            if let Some(thread) = thread {
-                buffer.push_str("in thread \"");
-                buffer.push_str(thread.as_str());
-                buffer.push_str("\" ");
-            }
-
-            buffer.push_str("- ");
-            buffer.push_str(message.as_str());
         }
+
+        if let Some(thread) = thread {
+            buffer.push_str(&color_bold_if(
+                "in".to_string(),
+                log.level().color(),
+                in_ansi,
+            ));
+            buffer.push_str(" ");
+            buffer.push_str(&color_bold_if(
+                "thread".to_string(),
+                log.level().color(),
+                in_ansi,
+            ));
+            buffer.push_str(" ");
+            buffer.push_str(&color_bold_if(
+                format!("\"{}\"", thread),
+                Color::Unset,
+                in_ansi,
+            ));
+            buffer.push_str(" ");
+        }
+
+        buffer.push_str(&color_bold_if(
+            "-".to_string(),
+            log.level().color(),
+            in_ansi,
+        ));
+        buffer.push_str(" ");
+        buffer.push_str(message.as_str());
     }
 }
 

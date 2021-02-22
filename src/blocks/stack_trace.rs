@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use yansi::Style;
 
-use crate::utils::text::{indent_text, remove_jump_lines};
+use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
 use crate::Log;
 
 /// A trace message of a stack block.
@@ -152,42 +152,26 @@ impl StackTraceBlock {
             buffer.push_str(format!("{}", column).as_str());
         }
 
-        if in_ansi {
-            if let Some(inner_path) = inner_path {
-                buffer.push_str(" ");
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint("at")
-                        .to_string()
-                        .as_str(),
-                );
-                buffer.push_str(" ");
-                buffer.push_str(inner_path.as_str());
-            }
+        if let Some(inner_path) = inner_path {
+            buffer.push_str(" ");
+            buffer.push_str(&color_bold_if(
+                "at".to_string(),
+                log.level().color(),
+                in_ansi,
+            ));
+            buffer.push_str(" ");
+            buffer.push_str(inner_path.as_str());
+        }
 
-            if let Some(message) = message {
-                buffer.push_str(" ");
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint("-")
-                        .to_string()
-                        .as_str(),
-                );
-                buffer.push_str(" ");
-                buffer.push_str(message.as_str());
-            }
-        } else {
-            if let Some(inner_path) = inner_path {
-                buffer.push_str(" at ");
-                buffer.push_str(inner_path.as_str());
-            }
-
-            if let Some(message) = message {
-                buffer.push_str(" - ");
-                buffer.push_str(message.as_str());
-            }
+        if let Some(message) = message {
+            buffer.push_str(" ");
+            buffer.push_str(&color_bold_if(
+                "-".to_string(),
+                log.level().color(),
+                in_ansi,
+            ));
+            buffer.push_str(" ");
+            buffer.push_str(message.as_str());
         }
     }
 }

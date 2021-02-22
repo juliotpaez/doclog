@@ -1,6 +1,7 @@
 use yansi::Style;
 
 use crate::constants::HORIZONTAL_BAR;
+use crate::utils::text::color_bold_if;
 use crate::Log;
 
 /// A block that prints a line separator.
@@ -34,12 +35,7 @@ impl SeparatorBlock {
 
     pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
         let separator = HORIZONTAL_BAR.repeat(self.width);
-        if in_ansi {
-            let style = Style::new(log.level().color()).bold();
-            buffer.push_str(style.paint(separator).to_string().as_str());
-        } else {
-            buffer.push_str(separator.as_str());
-        }
+        buffer.push_str(&color_bold_if(separator, log.level().color(), in_ansi));
     }
 }
 

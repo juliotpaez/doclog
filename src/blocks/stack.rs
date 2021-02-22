@@ -6,7 +6,7 @@ use crate::blocks::StackTraceBlock;
 use crate::constants::{
     BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, TOP_RIGHT_CORNER, VERTICAL_BAR, VERTICAL_RIGHT_BAR,
 };
-use crate::utils::text::indent_text;
+use crate::utils::text::{color_bold_if, indent_text};
 use crate::Log;
 
 /// A error stack block.
@@ -136,202 +136,106 @@ impl StackBlock {
     ) {
         let mut next_trace_number = 0;
 
-        if in_ansi {
-            let message = if is_cause {
-                indent_text(
-                    self.get_message(),
-                    format!(
-                        "{}             ",
-                        Style::new(log.level().color()).bold().paint(VERTICAL_BAR)
-                    )
-                    .as_str(),
-                    false,
+        let message = if is_cause {
+            indent_text(
+                self.get_message(),
+                format!(
+                    "{}             ",
+                    color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
                 )
-            } else {
-                indent_text(
-                    self.get_message(),
-                    format!(
-                        "{}  ",
-                        Style::new(log.level().color()).bold().paint(VERTICAL_BAR)
-                    )
-                    .as_str(),
-                    false,
-                )
-            };
-
-            // CAUSE
-            if is_cause {
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint(VERTICAL_BAR)
-                        .to_string()
-                        .as_str(),
-                );
-                buffer.push('\n');
-
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint(format!(
-                            "{}{} Caused by:",
-                            VERTICAL_RIGHT_BAR, HORIZONTAL_BAR
-                        ))
-                        .to_string()
-                        .as_str(),
-                );
-            } else {
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR))
-                        .to_string()
-                        .as_str(),
-                );
-            }
-            buffer.push_str(" ");
-            buffer.push_str(message.as_str());
-
-            // TRACES
-            let trace_prefix = format!(
-                "{}  ",
-                Style::new(log.level().color()).bold().paint(VERTICAL_BAR)
-            );
-            let full_trace_prefix = if self.show_stack_numbers {
-                format!("{}{}", trace_prefix, " ".repeat(max_trace_digits + 3))
-            } else {
-                trace_prefix.clone()
-            };
-
-            let mut trace_buffer = String::new();
-            for trace in self.traces.iter() {
-                buffer.push('\n');
-                buffer.push_str(trace_prefix.as_str());
-
-                if self.show_stack_numbers {
-                    let number = self.traces.len() - next_trace_number + initial_trace_number;
-                    next_trace_number += 1;
-
-                    buffer.push_str(
-                        Style::new(log.level().color())
-                            .bold()
-                            .paint(format!("[{:>width$}]", number, width = max_trace_digits))
-                            .to_string()
-                            .as_str(),
-                    );
-                    buffer.push_str(" ");
-                }
-
-                trace_buffer.clear();
-                trace.to_text(log, in_ansi, &mut trace_buffer);
-                buffer.push_str(
-                    indent_text(&trace_buffer, full_trace_prefix.as_str(), false).as_str(),
-                );
-            }
-
-            // CAUSE
-            if let Some(cause) = &self.cause {
-                buffer.push('\n');
-                cause.to_text_with_options(
-                    log,
-                    in_ansi,
-                    buffer,
-                    next_trace_number + initial_trace_number,
-                    max_trace_digits,
-                    true,
-                );
-            }
-
-            // END
-            if !is_cause {
-                buffer.push('\n');
-                buffer.push_str(
-                    Style::new(log.level().color())
-                        .bold()
-                        .paint(format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR))
-                        .to_string()
-                        .as_str(),
-                );
-            }
+                .as_str(),
+                false,
+            )
         } else {
-            let message = if is_cause {
-                indent_text(
-                    self.get_message(),
-                    format!("{}             ", VERTICAL_BAR).as_str(),
-                    false,
+            indent_text(
+                self.get_message(),
+                format!(
+                    "{}  ",
+                    color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
                 )
-            } else {
-                indent_text(
-                    self.get_message(),
-                    format!("{}  ", VERTICAL_BAR).as_str(),
-                    false,
-                )
-            };
+                .as_str(),
+                false,
+            )
+        };
 
-            // CAUSE
-            if is_cause {
-                buffer.push_str(VERTICAL_BAR);
-                buffer.push('\n');
+        // CAUSE
+        if is_cause {
+            buffer.push_str(&color_bold_if(
+                VERTICAL_BAR.to_string(),
+                log.level().color(),
+                in_ansi,
+            ));
+            buffer.push('\n');
 
-                buffer.push_str(VERTICAL_RIGHT_BAR);
-                buffer.push_str(HORIZONTAL_BAR);
-                buffer.push_str(" Caused by:");
-            } else {
-                buffer.push_str(BOTTOM_RIGHT_CORNER);
-                buffer.push_str(HORIZONTAL_BAR);
-            }
-            buffer.push_str(" ");
-            buffer.push_str(message.as_str());
+            buffer.push_str(&color_bold_if(
+                format!("{}{} Caused by:", VERTICAL_RIGHT_BAR, HORIZONTAL_BAR),
+                log.level().color(),
+                in_ansi,
+            ));
+        } else {
+            buffer.push_str(&color_bold_if(
+                format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR),
+                log.level().color(),
+                in_ansi,
+            ));
+        }
+        buffer.push_str(" ");
+        buffer.push_str(message.as_str());
 
-            // TRACES
-            let trace_prefix = format!("{}  ", VERTICAL_BAR);
-            let full_trace_prefix = if self.show_stack_numbers {
-                format!("{}{}", trace_prefix, " ".repeat(max_trace_digits + 3))
-            } else {
-                trace_prefix.clone()
-            };
+        // TRACES
+        let trace_prefix = format!(
+            "{}  ",
+            color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
+        );
+        let full_trace_prefix = if self.show_stack_numbers {
+            format!("{}{}", trace_prefix, " ".repeat(max_trace_digits + 3))
+        } else {
+            trace_prefix.clone()
+        };
 
-            let mut trace_buffer = String::new();
-            for trace in self.traces.iter() {
-                buffer.push('\n');
-                buffer.push_str(trace_prefix.as_str());
+        let mut trace_buffer = String::new();
+        for trace in self.traces.iter() {
+            buffer.push('\n');
+            buffer.push_str(trace_prefix.as_str());
 
-                if self.show_stack_numbers {
-                    let number = self.traces.len() - next_trace_number + initial_trace_number;
-                    next_trace_number += 1;
+            if self.show_stack_numbers {
+                let number = self.traces.len() - next_trace_number + initial_trace_number;
+                next_trace_number += 1;
 
-                    buffer.push_str("[");
-                    buffer
-                        .push_str(format!("{:>width$}", number, width = max_trace_digits).as_str());
-                    buffer.push_str("] ");
-                }
-
-                trace_buffer.clear();
-                trace.to_text(log, in_ansi, &mut trace_buffer);
-                buffer.push_str(
-                    indent_text(&trace_buffer, full_trace_prefix.as_str(), false).as_str(),
-                );
-            }
-
-            // CAUSE
-            if let Some(cause) = &self.cause {
-                buffer.push('\n');
-                cause.to_text_with_options(
-                    log,
+                buffer.push_str(&color_bold_if(
+                    format!("[{:>width$}]", number, width = max_trace_digits),
+                    log.level().color(),
                     in_ansi,
-                    buffer,
-                    next_trace_number + initial_trace_number,
-                    max_trace_digits,
-                    true,
-                );
+                ));
+                buffer.push_str(" ");
             }
 
-            // END
-            if !is_cause {
-                buffer.push('\n');
-                buffer.push_str(TOP_RIGHT_CORNER);
-                buffer.push_str(HORIZONTAL_BAR);
-            }
+            trace_buffer.clear();
+            trace.to_text(log, in_ansi, &mut trace_buffer);
+            buffer.push_str(indent_text(&trace_buffer, full_trace_prefix.as_str(), false).as_str());
+        }
+
+        // CAUSE
+        if let Some(cause) = &self.cause {
+            buffer.push('\n');
+            cause.to_text_with_options(
+                log,
+                in_ansi,
+                buffer,
+                next_trace_number + initial_trace_number,
+                max_trace_digits,
+                true,
+            );
+        }
+
+        // END
+        if !is_cause {
+            buffer.push('\n');
+            buffer.push_str(&color_bold_if(
+                format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR),
+                log.level().color(),
+                in_ansi,
+            ));
         }
     }
 }
