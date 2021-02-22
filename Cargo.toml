@@ -6,6 +6,8 @@ authors = ["Julio Treviño Páez <julio.tpaez@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+bytecount = "0.6.2"
 chrono = "0.4.19"
 lazy_static = "1.4.0"
+memchr = "2.3.4"
 yansi = "0.5.0"
