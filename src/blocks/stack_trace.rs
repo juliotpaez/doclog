@@ -241,7 +241,7 @@ mod tests {
             StackTraceBlock::new_str("/path/t\no/file.test").inner_path_str("path::t\no::class");
         stack_trace.to_text(&log, false, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test at path::to::class"));
+        assert_eq!(text, format!("/path/t o/file.test at path::t o::class"));
 
         // LOCATION + MESSAGE
         let mut text = String::new();
@@ -262,7 +262,7 @@ mod tests {
 
         assert_eq!(
             text,
-            format!("/path/to/file.test:15:24 at path::to::class - Multiline\n    message")
+            format!("/path/to/file.test:15:24 at path::t o::class - Multiline\n    message")
         );
     }
 
@@ -308,7 +308,7 @@ mod tests {
         assert_eq!(
             text,
             format!(
-                "/path/to/file.test {} path::to::class",
+                "/path/to/file.test {} path::t o::class",
                 Style::new(LogLevel::info().color()).bold().paint("at"),
             )
         );
@@ -339,7 +339,7 @@ mod tests {
         assert_eq!(
             text,
             format!(
-                "/path/to/file.test:15:24 {} path::to::class {} Multiline\n    message",
+                "/path/to/file.test:15:24 {} path::t o::class {} Multiline\n    message",
                 Style::new(LogLevel::info().color()).bold().paint("at"),
                 Style::new(LogLevel::info().color()).bold().paint("-")
             )

@@ -2,7 +2,7 @@ use crate::utils::text::indent_text;
 use crate::Log;
 
 /// A block that prints a line separator.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct IndentBlock {
     log: Box<Log>,
 }

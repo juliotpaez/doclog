@@ -1,3 +1,6 @@
+// TODO remove
+#![allow(dead_code)]
+
 pub const DOWN_ARROW: &'static str = "↓";
 pub const UP_ARROW: &'static str = "↑";
 pub const VERTICAL_BAR: &'static str = "│";

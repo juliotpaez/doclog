@@ -4,13 +4,13 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::blocks::{
-    IndentBlock, LogBlock, NoteBlock, PlainTextBlock, SeparatorBlock, StackBlock, TagBlock,
-    TitleBlock,
+    DocumentBlock, IndentBlock, LogBlock, NoteBlock, PlainTextBlock, SeparatorBlock, StackBlock,
+    TagBlock, TitleBlock,
 };
 use crate::{is_ansi_supported, LogLevel};
 
 /// A configured log.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Log {
     level: LogLevel,
     blocks: Vec<LogBlock>,
@@ -161,6 +161,24 @@ impl Log {
     /// Adds a new plain text block.
     pub fn plain_text_str(self, text: &str) -> Self {
         self.plain_text(Arc::new(text.to_string()))
+    }
+
+    /// Adds a document block.
+    pub fn document<F>(self, content: Arc<String>, builder: F) -> Self
+    where
+        F: FnOnce(DocumentBlock) -> DocumentBlock,
+    {
+        let document = DocumentBlock::new(Arc::new(content.to_string()));
+        let document = builder(document);
+        self.add_block(LogBlock::Document(document))
+    }
+
+    /// Adds a document block.
+    pub fn document_str<F>(self, content: &str, builder: F) -> Self
+    where
+        F: FnOnce(DocumentBlock) -> DocumentBlock,
+    {
+        self.document(Arc::new(content.to_string()), builder)
     }
 
     /// Adds a separator block.

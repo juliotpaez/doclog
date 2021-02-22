@@ -1,3 +1,5 @@
+pub use document::*;
+pub use document::*;
 pub use indent::*;
 pub use note::*;
 pub use plain_text::*;
@@ -9,6 +11,7 @@ pub use title::*;
 
 use crate::Log;
 
+mod document;
 mod indent;
 mod note;
 mod plain_text;
@@ -19,10 +22,11 @@ mod tag;
 mod title;
 
 /// One block that belongs to a log.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum LogBlock {
     Title(TitleBlock),
     PlainText(PlainTextBlock),
+    Document(DocumentBlock),
     Separator(SeparatorBlock),
     Indent(IndentBlock),
     Stack(StackBlock),
@@ -38,6 +42,9 @@ impl LogBlock {
             }
             LogBlock::PlainText(block) => {
                 block.to_text(buffer);
+            }
+            LogBlock::Document(block) => {
+                block.to_text(log, in_ansi, buffer);
             }
             LogBlock::Separator(block) => {
                 block.to_text(log, in_ansi, buffer);

@@ -1,7 +1,7 @@
 /// Indents `text` prefixing each line with `indent`.
 /// If `indent_first` is `true`, the first line is also prefixed.
 pub fn indent_text(text: &str, indent: &str, indent_first: bool) -> String {
-    let mut buffer = String::new();
+    let mut buffer = String::with_capacity(text.len());
 
     for (i, line) in text.lines().enumerate() {
         if i > 0 {
@@ -19,9 +19,12 @@ pub fn indent_text(text: &str, indent: &str, indent_first: bool) -> String {
 
 /// Removes the jump lines of `text`.
 pub fn remove_jump_lines(text: &str) -> String {
-    let mut buffer = String::new();
+    let mut buffer = String::with_capacity(text.len());
 
-    for line in text.lines() {
+    for (i, line) in text.lines().enumerate() {
+        if i != 0 {
+            buffer.push(' ');
+        }
         buffer.push_str(line);
     }
 
@@ -48,6 +51,6 @@ mod tests {
     #[test]
     fn test_remove_jump_lines() {
         let result = remove_jump_lines("this\nis\na\ntest");
-        assert_eq!(result, format!("thisisatest"));
+        assert_eq!(result, format!("this is a test"));
     }
 }

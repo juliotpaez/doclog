@@ -101,7 +101,7 @@ mod tests {
 
         assert_eq!(
             text,
-            format!("= titlemultiline1: message\n                   multiline2")
+            format!("= title multiline1: message\n                    multiline2")
         );
     }
 
@@ -113,9 +113,9 @@ mod tests {
         assert_eq!(
             text,
             format!(
-                "{} {}{} message\n                   multiline2",
+                "{} {}{} message\n                    multiline2",
                 Style::new(LogLevel::info().color()).bold().paint("="),
-                Style::new(Color::Unset).bold().paint("titlemultiline1"),
+                Style::new(Color::Unset).bold().paint("title multiline1"),
                 Style::new(LogLevel::info().color()).bold().paint(":"),
             )
         );
