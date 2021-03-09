@@ -1,8 +1,6 @@
 use std::option::Option::Some;
 use std::sync::Arc;
 
-use yansi::Style;
-
 use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
 use crate::Log;
 
@@ -182,6 +180,8 @@ impl StackTraceBlock {
 
 #[cfg(test)]
 mod tests {
+    use yansi::Style;
+
     use crate::{Log, LogLevel};
 
     use super::*;

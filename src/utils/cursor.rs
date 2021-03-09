@@ -89,6 +89,7 @@ impl Cursor {
     }
 
     /// Gets the content from the start of line.
+    #[cfg(test)]
     pub fn slice_from_line_start<'a>(&self, text: &'a str) -> &'a str {
         let prev_text = &text[..self.byte_offset];
         let line_start_offset = match memchr::memrchr(b'\n', prev_text.as_bytes()) {

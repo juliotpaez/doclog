@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use chrono::{SecondsFormat, Utc};
-use yansi::{Color, Style};
+use yansi::Color;
 
 use crate::utils::text::{color_bold_if, indent_text};
 use crate::Log;
@@ -147,6 +147,7 @@ impl TitleBlock {
 #[cfg(test)]
 mod tests {
     use chrono::Datelike;
+    use yansi::Style;
 
     use crate::{Log, LogLevel};
 

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use yansi::{Color, Style};
+use yansi::Color;
 
 use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
 use crate::Log;
@@ -86,6 +86,8 @@ impl NoteBlock {
 
 #[cfg(test)]
 mod tests {
+    use yansi::Style;
+
     use crate::{Log, LogLevel};
 
     use super::*;

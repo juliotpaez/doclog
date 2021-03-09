@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::option::Option::Some;
 use std::sync::Arc;
 
-use yansi::{Color, Style};
+use yansi::Color;
 
 use crate::constants::{
     BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, HORIZONTAL_BOTTOM_BAR, HORIZONTAL_TOP_BAR, MIDDLE_DOT,
@@ -969,6 +969,8 @@ impl HighlightedSection {
 
 #[cfg(test)]
 mod tests {
+    use yansi::Style;
+
     use crate::LogLevel;
 
     use super::*;

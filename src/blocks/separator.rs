@@ -1,5 +1,3 @@
-use yansi::Style;
-
 use crate::constants::HORIZONTAL_BAR;
 use crate::utils::text::color_bold_if;
 use crate::Log;
@@ -45,9 +43,9 @@ impl SeparatorBlock {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Log, LogLevel};
+    use yansi::Style;
 
-    use super::*;
+    use crate::{Log, LogLevel};
 
     #[test]
     fn test_plain() {
