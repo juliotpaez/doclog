@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 
+pub use yansi::Color;
 use yansi::Paint;
 
 pub use levels::*;
