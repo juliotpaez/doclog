@@ -671,14 +671,10 @@ impl HighlightedSection {
             let content = self.content(&document.content);
 
             buffer.push_str(&color_bold_if(
-                content.trim().to_string(),
+                content.replace("\t", " ").replace("\r", " "),
                 self.color.unwrap(),
                 in_ansi,
             ));
-
-            if content.ends_with("\r") {
-                buffer.push(' ');
-            }
         }
     }
 
@@ -1014,7 +1010,8 @@ mod tests {
              │   4  line\n\
              │     >┬─┘└── C\n\
              │      └───── B\n\
-             └─ This\n   is an\n   end message"
+             └─ This\n   is an\n   end message",
+            "Test 0"
         );
 
         let text = "Second\ntest";
@@ -1034,7 +1031,8 @@ mod tests {
              │       ^ └┴── 1+ chars with message\n\
              │   2  test\n\
              │       └┘\n\
-             └─"
+             └─",
+            "Test 1"
         );
 
         let text = "This\r\nis a\ndocument";
@@ -1066,7 +1064,8 @@ mod tests {
              │      └────── a\n\
              │   2  is a\n\
              │      └── c\n\
-             └─"
+             └─",
+            "Test 2"
         );
 
         let text = "This\nis a\ndocument";
@@ -1096,7 +1095,8 @@ mod tests {
              │   2  ·i·s· a\n\
              │      │ ^ └── x7\n\
              │      └────── x5\n\
-             └─"
+             └─",
+            "Test 3"
         );
     }
 
@@ -1207,7 +1207,8 @@ mod tests {
                 Style::new(Color::Blue).bold().paint("└"),
                 Style::new(Color::Blue).bold().paint("─────"),
                 end
-            )
+            ),
+            "Test 0"
         );
 
         let text = "Second\ntest";
@@ -1245,7 +1246,8 @@ mod tests {
                 single_bar,
                 Style::new(Color::Blue).bold().paint("└┘"),
                 end
-            )
+            ),
+            "Test 1"
         );
 
         let text = "This\r\nis a\ndocument";
@@ -1268,12 +1270,12 @@ mod tests {
                 "{}\n\
                  {} {} /path/t o/file.test\n\
                  {}\n\
-                 {}   {}  {} \n\
+                 {}   {}  {}\n\
                  {}      {}\n\
                  {}   {}  {}\n\
                  {}     {}\n\
                  {}\n\
-                 {}   {}  {} {}\n\
+                 {}   {}  {}{}\n\
                  {}      {}{}{} b\n\
                  {}      {}{} a\n\
                  {}   {}  {}s a\n\
@@ -1285,7 +1287,7 @@ mod tests {
                 single_bar,
                 single_bar,
                 Style::new(Color::Blue).bold().paint("1"),
-                Style::new(Color::Blue).bold().paint("This"),
+                Style::new(Color::Blue).bold().paint("This "),
                 single_bar,
                 Style::new(Color::Blue).bold().paint("└─────>"),
                 single_bar,
@@ -1296,7 +1298,7 @@ mod tests {
                 Style::new(Color::Blue).bold().paint("├─"),
                 single_bar,
                 Style::new(Color::Blue).bold().paint("1"),
-                Style::new(Color::Blue).bold().paint("This"),
+                Style::new(Color::Blue).bold().paint("This "),
                 Style::new(Color::Magenta).bold().paint(""),
                 single_bar,
                 Style::new(Color::Blue).bold().paint("├───┘"),
@@ -1312,7 +1314,8 @@ mod tests {
                 Style::new(Color::Blue).bold().paint("└"),
                 Style::new(Color::Blue).bold().paint("──"),
                 end
-            )
+            ),
+            "Test 2"
         );
 
         let text = "This\nis a\ndocument";
@@ -1383,7 +1386,8 @@ mod tests {
                 Style::new(Color::Magenta).bold().paint("└"),
                 Style::new(Color::Magenta).bold().paint("──────"),
                 end,
-            )
+            ),
+            "Test 3"
         );
     }
 }
