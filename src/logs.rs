@@ -187,13 +187,16 @@ impl Log {
     }
 
     /// Adds an indent block.
-    pub fn indent<F>(self, builder: F) -> Self
+    pub fn indent<F>(self, indent: usize, builder: F) -> Self
     where
         F: FnOnce(Log) -> Log,
     {
         let new_log = Log::new(self.level.clone());
         let new_log = builder(new_log);
-        self.add_block(LogBlock::Indent(IndentBlock::new(Box::new(new_log))))
+        self.add_block(LogBlock::Indent(IndentBlock::new(
+            indent,
+            Box::new(new_log),
+        )))
     }
 
     /// Adds a tag block.
