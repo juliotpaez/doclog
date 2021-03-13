@@ -13,8 +13,8 @@ pub struct TagBlock {
 impl TagBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(tag: ArcStr) -> TagBlock {
-        TagBlock { tag }
+    pub fn new<T: Into<ArcStr>>(tag: T) -> TagBlock {
+        TagBlock { tag: tag.into() }
     }
 
     // GETTERS ----------------------------------------------------------------
@@ -26,8 +26,8 @@ impl TagBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn tag(mut self, tag: ArcStr) -> Self {
-        self.tag = tag;
+    pub fn tag<T: Into<ArcStr>>(mut self, tag: T) -> Self {
+        self.tag = tag.into();
         self
     }
 
@@ -60,7 +60,7 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::info().tag("TAG".into());
+        let log = Log::info().tag("TAG");
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("= TAG"));
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::info().tag("TAG".into());
+        let log = Log::info().tag("TAG");
         let text = log.to_ansi_text();
 
         assert_eq!(

@@ -16,9 +16,9 @@ pub struct TitleBlock {
 impl TitleBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(message: ArcStr, show_date: bool, show_thread: bool) -> TitleBlock {
+    pub fn new<M: Into<ArcStr>>(message: M, show_date: bool, show_thread: bool) -> TitleBlock {
         TitleBlock {
-            message,
+            message: message.into(),
             show_date,
             show_thread,
         }
@@ -43,8 +43,8 @@ impl TitleBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message(mut self, message: ArcStr) -> Self {
-        self.message = message;
+    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
+        self.message = message.into();
         self
     }
 
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn test_plain() {
         // MESSAGE
-        let log = Log::info().title("This is a\nmultiline\nmessage".into(), false, false);
+        let log = Log::info().title("This is a\nmultiline\nmessage", false, false);
         let text = log.to_plain_text();
 
         assert_eq!(
@@ -163,7 +163,7 @@ mod tests {
             .name()
             .unwrap_or("undefined")
             .to_string();
-        let log = Log::info().title("This is a\nmultiline\nmessage".into(), false, true);
+        let log = Log::info().title("This is a\nmultiline\nmessage", false, true);
         let text = log.to_plain_text();
 
         assert_eq!(
@@ -176,7 +176,7 @@ mod tests {
 
         // MESSAGE + DATE
         let year_first_digit = Utc::today().to_string().chars().next().unwrap();
-        let log = Log::info().title("This is a\nmultiline\nmessage".into(), true, false);
+        let log = Log::info().title("This is a\nmultiline\nmessage", true, false);
         let text = log.to_plain_text();
 
         assert_eq!(
@@ -190,7 +190,7 @@ mod tests {
         );
 
         // MESSAGE + DATE + THREAD
-        let log = Log::info().title("This is a\nmultiline\nmessage".into(), true, true);
+        let log = Log::info().title("This is a\nmultiline\nmessage", true, true);
         let text = log.to_plain_text();
 
         assert_eq!(
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn test_ansi() {
         // MESSAGE
-        let log = Log::info().title("This is a\nmultiline\nmessage".into(), false, false);
+        let log = Log::info().title("This is a\nmultiline\nmessage", false, false);
         let text = log.to_ansi_text();
 
         assert_eq!(
@@ -229,7 +229,7 @@ mod tests {
             .name()
             .unwrap_or("undefined")
             .to_string();
-        let log = Log::info().title("This is a\nmultiline\nmessage".into(), false, true);
+        let log = Log::info().title("This is a\nmultiline\nmessage", false, true);
         let text = log.to_ansi_text();
 
         assert_eq!(
@@ -250,7 +250,7 @@ mod tests {
 
         // MESSAGE + DATE
         let year = Utc::today().year().to_string();
-        let log = Log::info().title("This is a\nmultiline\nmessage".into(), true, false);
+        let log = Log::info().title("This is a\nmultiline\nmessage", true, false);
         let text = log.to_ansi_text();
 
         assert_eq!(
@@ -291,7 +291,7 @@ mod tests {
             .name()
             .unwrap_or("undefined")
             .to_string();
-        let log = Log::info().title("This is a\nmultiline\nmessage".into(), true, true);
+        let log = Log::info().title("This is a\nmultiline\nmessage", true, true);
         let text = log.to_ansi_text();
 
         assert_eq!(

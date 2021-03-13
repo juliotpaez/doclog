@@ -31,9 +31,9 @@ pub struct DocumentBlock {
 impl DocumentBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(content: ArcStr) -> DocumentBlock {
+    pub fn new<C: Into<ArcStr>>(content: C) -> DocumentBlock {
         DocumentBlock {
-            content,
+            content: content.into(),
             sections: RangeMap::new(),
             related_block: None,
             title: None,
@@ -85,8 +85,8 @@ impl DocumentBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn title(mut self, title: ArcStr) -> Self {
-        self.title = Some(title);
+    pub fn title<T: Into<ArcStr>>(mut self, title: T) -> Self {
+        self.title = Some(title.into());
         self
     }
 
@@ -95,8 +95,8 @@ impl DocumentBlock {
         self
     }
 
-    pub fn file_path(mut self, file_path: ArcStr) -> Self {
-        self.file_path = Some(file_path);
+    pub fn file_path<F: Into<ArcStr>>(mut self, file_path: F) -> Self {
+        self.file_path = Some(file_path.into());
         self
     }
 
@@ -105,8 +105,8 @@ impl DocumentBlock {
         self
     }
 
-    pub fn end_message(mut self, end_message: ArcStr) -> Self {
-        self.end_message = Some(end_message);
+    pub fn end_message<M: Into<ArcStr>>(mut self, end_message: M) -> Self {
+        self.end_message = Some(end_message.into());
         self
     }
 
@@ -129,20 +129,41 @@ impl DocumentBlock {
 
     /// Highlights a cursor position.
     /// Equals to `highlight_section(position..position, ..)`.
-    pub fn highlight_cursor(
+    pub fn highlight_cursor(self, position: usize, color: Option<Color>) -> Self {
+        self.highlight_section_inner::<&str>(position..position, None, color)
+    }
+
+    /// Highlights a cursor position.
+    /// Equals to `highlight_section(position..position, ..)`.
+    pub fn highlight_cursor_message<M: Into<ArcStr>>(
         self,
         position: usize,
-        message: Option<ArcStr>,
+        message: M,
         color: Option<Color>,
     ) -> Self {
-        self.highlight_section(position..position, message, color)
+        self.highlight_section_inner(position..position, Some(message), color)
     }
 
     /// Highlights a section.
-    pub fn highlight_section(
+    pub fn highlight_section(self, range: Range<usize>, color: Option<Color>) -> Self {
+        self.highlight_section_inner::<&str>(range, None, color)
+    }
+
+    /// Highlights a section with a message.
+    pub fn highlight_section_message<M: Into<ArcStr>>(
+        self,
+        range: Range<usize>,
+        message: M,
+        color: Option<Color>,
+    ) -> Self {
+        self.highlight_section_inner(range, Some(message), color)
+    }
+
+    /// Highlights a section.
+    fn highlight_section_inner<M: Into<ArcStr>>(
         mut self,
         range: Range<usize>,
-        message: Option<ArcStr>,
+        message: Option<M>,
         color: Option<Color>,
     ) -> Self {
         assert!(
@@ -157,7 +178,7 @@ impl DocumentBlock {
             HighlightedSection {
                 to: from.clone(),
                 from,
-                message,
+                message: message.map(|v| v.into()),
                 color,
                 is_multiline_start: false,
                 is_multiline_end: false,
@@ -170,7 +191,7 @@ impl DocumentBlock {
             HighlightedSection {
                 from,
                 to,
-                message,
+                message: message.map(|v| v.into()),
                 color,
                 is_multiline_start: is_multiline,
                 is_multiline_end: is_multiline,
@@ -940,19 +961,19 @@ mod tests {
     #[test]
     fn test_plain() {
         let text = "First\ntest\nthird\nline";
-        let log = Log::info().document(text.into(), |document| {
+        let log = Log::info().document(text, |document| {
             document
                 .show_new_line_chars(true)
-                .title("This\nis a\ntitle".into())
-                .file_path("/path/t\no/file.test".into())
-                .end_message("This\nis an\nend message".into())
-                .highlight_section(1..3, Some("Comment\nmultiline".into()), None)
-                .highlight_cursor(3, Some("Comment cursor".into()), None)
-                .highlight_section(3..4, Some("Comment".into()), Some(Color::Red))
-                .highlight_section(5..7, Some("Comment jump line".into()), Some(Color::Red))
-                .highlight_section(7..8, Some("A".into()), Some(Color::Red))
-                .highlight_section(8..20, Some("B".into()), Some(Color::Red))
-                .highlight_section(20..21, Some("C".into()), Some(Color::Red))
+                .title("This\nis a\ntitle")
+                .file_path("/path/t\no/file.test")
+                .end_message("This\nis an\nend message")
+                .highlight_section_message(1..3, "Comment\nmultiline", None)
+                .highlight_cursor_message(3, "Comment cursor", None)
+                .highlight_section_message(3..4, "Comment", Some(Color::Red))
+                .highlight_section_message(5..7, "Comment jump line", Some(Color::Red))
+                .highlight_section_message(7..8, "A", Some(Color::Red))
+                .highlight_section_message(8..20, "B", Some(Color::Red))
+                .highlight_section_message(20..21, "C", Some(Color::Red))
         });
         let text = log.to_plain_text();
 
@@ -980,12 +1001,12 @@ mod tests {
         );
 
         let text = "Second\ntest";
-        let log = Log::info().document(text.into(), |document| {
+        let log = Log::info().document(text, |document| {
             document
                 .show_new_line_chars(true)
-                .highlight_section(1..2, None, None)
-                .highlight_section(3..5, Some("1+ chars with message".into()), None)
-                .highlight_section(8..10, None, None)
+                .highlight_section(1..2, None)
+                .highlight_section_message(3..5, "1+ chars with message", None)
+                .highlight_section(8..10, None)
         });
         let text = log.to_plain_text();
 
@@ -1001,15 +1022,15 @@ mod tests {
         );
 
         let text = "This\r\nis a\ndocument";
-        let log = Log::info().document(text.into(), |document| {
+        let log = Log::info().document(text, |document| {
             document
-                .file_path("/path/t\no/file.test".into())
-                .highlight_section(0..text.len(), None, None)
+                .file_path("/path/t\no/file.test")
+                .highlight_section(0..text.len(), None)
                 .related_document(|document| {
                     document
-                        .highlight_section(0..5, Some("a".into()), None)
-                        .highlight_section(5..6, Some("b".into()), None)
-                        .highlight_section(6..7, Some("c".into()), None)
+                        .highlight_section_message(0..5, "a", None)
+                        .highlight_section_message(5..6, "b", None)
+                        .highlight_section_message(6..7, "c", None)
                 })
         });
         let text = log.to_plain_text();
@@ -1034,17 +1055,17 @@ mod tests {
         );
 
         let text = "This\nis a\ndocument";
-        let log = Log::info().document(text.into(), |document| {
+        let log = Log::info().document(text, |document| {
             document
-                .file_path("/path/to/file.test".into())
-                .highlight_cursor(0, Some("x0".into()), None)
-                .highlight_cursor(1, None, None)
-                .highlight_cursor(2, Some("x2".into()), None)
-                .highlight_cursor(3, None, None)
-                .highlight_cursor(4, Some("x4".into()), None)
-                .highlight_cursor(5, Some("x5".into()), None)
-                .highlight_cursor(6, None, None)
-                .highlight_cursor(7, Some("x7".into()), None)
+                .file_path("/path/to/file.test")
+                .highlight_cursor_message(0, "x0", None)
+                .highlight_cursor(1, None)
+                .highlight_cursor_message(2, "x2", None)
+                .highlight_cursor(3, None)
+                .highlight_cursor_message(4, "x4", None)
+                .highlight_cursor_message(5, "x5", None)
+                .highlight_cursor(6, None)
+                .highlight_cursor_message(7, "x7", None)
         });
         let text = log.to_plain_text();
 
@@ -1068,19 +1089,19 @@ mod tests {
     #[test]
     fn test_ansi() {
         let text = "First\ntest\nthird\nline";
-        let log = Log::info().document(text.into(), |document| {
+        let log = Log::info().document(text, |document| {
             document
                 .show_new_line_chars(true)
-                .title("This\nis a\ntitle".into())
-                .file_path("/path/t\no/file.test".into())
-                .end_message("This\nis an\nend message".into())
-                .highlight_section(1..3, Some("Comment\nmultiline".into()), None)
-                .highlight_cursor(3, Some("Comment cursor".into()), None)
-                .highlight_section(3..4, Some("Comment".into()), Some(Color::Red))
-                .highlight_section(5..7, Some("Comment jump line".into()), Some(Color::Red))
-                .highlight_section(7..8, Some("A".into()), Some(Color::Red))
-                .highlight_section(8..20, Some("B".into()), None)
-                .highlight_section(20..21, Some("C".into()), None)
+                .title("This\nis a\ntitle")
+                .file_path("/path/t\no/file.test")
+                .end_message("This\nis an\nend message")
+                .highlight_section_message(1..3, "Comment\nmultiline", None)
+                .highlight_cursor_message(3, "Comment cursor", None)
+                .highlight_section_message(3..4, "Comment", Some(Color::Red))
+                .highlight_section_message(5..7, "Comment jump line", Some(Color::Red))
+                .highlight_section_message(7..8, "A", Some(Color::Red))
+                .highlight_section_message(8..20, "B", None)
+                .highlight_section_message(20..21, "C", None)
         });
         let text = log.to_ansi_text();
 
@@ -1177,12 +1198,12 @@ mod tests {
         );
 
         let text = "Second\ntest";
-        let log = Log::info().document(text.into(), |document| {
+        let log = Log::info().document(text, |document| {
             document
                 .show_new_line_chars(true)
-                .highlight_section(1..2, None, None)
-                .highlight_section(3..5, Some("1+ chars with message".into()), None)
-                .highlight_section(8..10, None, None)
+                .highlight_section(1..2, None)
+                .highlight_section_message(3..5, "1+ chars with message", None)
+                .highlight_section(8..10, None)
         });
         let text = log.to_ansi_text();
 
@@ -1216,15 +1237,15 @@ mod tests {
         );
 
         let text = "This\r\nis a\ndocument";
-        let log = Log::info().document(text.into(), |document| {
+        let log = Log::info().document(text, |document| {
             document
-                .file_path("/path/t\no/file.test".into())
-                .highlight_section(0..text.len(), None, None)
+                .file_path("/path/t\no/file.test")
+                .highlight_section(0..text.len(), None)
                 .related_document(|document| {
                     document
-                        .highlight_section(0..5, Some("a".into()), None)
-                        .highlight_section(5..6, Some("b".into()), None)
-                        .highlight_section(6..7, Some("c".into()), None)
+                        .highlight_section_message(0..5, "a", None)
+                        .highlight_section_message(5..6, "b", None)
+                        .highlight_section_message(6..7, "c", None)
                 })
         });
         let text = log.to_ansi_text();
@@ -1284,17 +1305,17 @@ mod tests {
         );
 
         let text = "This\nis a\ndocument";
-        let log = Log::info().document(text.into(), |document| {
+        let log = Log::info().document(text, |document| {
             document
-                .file_path("/path/to/file.test".into())
-                .highlight_cursor(0, Some("x0".into()), None)
-                .highlight_cursor(1, None, None)
-                .highlight_cursor(2, Some("x2".into()), None)
-                .highlight_cursor(3, None, None)
-                .highlight_cursor(4, Some("x4".into()), None)
-                .highlight_cursor(5, Some("x5".into()), None)
-                .highlight_cursor(6, None, None)
-                .highlight_cursor(7, Some("x7".into()), None)
+                .file_path("/path/to/file.test")
+                .highlight_cursor_message(0, "x0", None)
+                .highlight_cursor(1, None)
+                .highlight_cursor_message(2, "x2", None)
+                .highlight_cursor(3, None)
+                .highlight_cursor_message(4, "x4", None)
+                .highlight_cursor_message(5, "x5", None)
+                .highlight_cursor(6, None)
+                .highlight_cursor_message(7, "x7", None)
         });
         let text = log.to_ansi_text();
 

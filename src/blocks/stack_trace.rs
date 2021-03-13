@@ -18,9 +18,9 @@ pub struct StackTraceBlock {
 impl StackTraceBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(location: ArcStr) -> StackTraceBlock {
+    pub fn new<L: Into<ArcStr>>(location: L) -> StackTraceBlock {
         StackTraceBlock {
-            location,
+            location: location.into(),
             inner_path: None,
             line: None,
             column: None,
@@ -57,13 +57,13 @@ impl StackTraceBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn location(mut self, location: ArcStr) -> Self {
-        self.location = location;
+    pub fn location<L: Into<ArcStr>>(mut self, location: L) -> Self {
+        self.location = location.into();
         self
     }
 
-    pub fn inner_path(mut self, inner_path: ArcStr) -> Self {
-        self.inner_path = Some(inner_path);
+    pub fn inner_path<P: Into<ArcStr>>(mut self, inner_path: P) -> Self {
+        self.inner_path = Some(inner_path.into());
         self
     }
 
@@ -92,8 +92,8 @@ impl StackTraceBlock {
         self
     }
 
-    pub fn message(mut self, message: ArcStr) -> Self {
-        self.message = Some(message);
+    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
+        self.message = Some(message.into());
         self
     }
 
@@ -174,28 +174,28 @@ mod tests {
         // LOCATION
         let mut text = String::new();
         let log = Log::info();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into());
+        let stack_trace = StackTraceBlock::new("/path/to/file.test");
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test"));
 
         // LOCATION + LINE
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into()).line(15);
+        let stack_trace = StackTraceBlock::new("/path/to/file.test").line(15);
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test:15"));
 
         // LOCATION + COLUMN
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into()).column(24);
+        let stack_trace = StackTraceBlock::new("/path/to/file.test").column(24);
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test:??:24"));
 
         // LOCATION + LINE + COLUMN
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into())
+        let stack_trace = StackTraceBlock::new("/path/to/file.test")
             .line(15)
             .column(24);
         stack_trace.to_text(&log, false, &mut text);
@@ -204,27 +204,26 @@ mod tests {
 
         // LOCATION + INNER_PATH
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/t\no/file.test".into())
-            .inner_path("path::t\no::class".into());
+        let stack_trace =
+            StackTraceBlock::new("/path/t\no/file.test").inner_path("path::t\no::class");
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/t o/file.test at path::t o::class"));
 
         // LOCATION + MESSAGE
         let mut text = String::new();
-        let stack_trace =
-            StackTraceBlock::new("/path/to/file.test".into()).message("Multiline\nmessage".into());
+        let stack_trace = StackTraceBlock::new("/path/to/file.test").message("Multiline\nmessage");
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test - Multiline\n    message"));
 
         // LOCATION + ALL
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into())
-            .inner_path("path::t\no::class".into())
+        let stack_trace = StackTraceBlock::new("/path/to/file.test")
+            .inner_path("path::t\no::class")
             .line(15)
             .column(24)
-            .message("Multiline\nmessage".into());
+            .message("Multiline\nmessage");
         stack_trace.to_text(&log, false, &mut text);
 
         assert_eq!(
@@ -238,28 +237,28 @@ mod tests {
         // LOCATION
         let mut text = String::new();
         let log = Log::info();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into());
+        let stack_trace = StackTraceBlock::new("/path/to/file.test");
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test"));
 
         // LOCATION + LINE
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into()).line(15);
+        let stack_trace = StackTraceBlock::new("/path/to/file.test").line(15);
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test:15"));
 
         // LOCATION + COLUMN
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into()).column(24);
+        let stack_trace = StackTraceBlock::new("/path/to/file.test").column(24);
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(text, format!("/path/to/file.test:??:24"));
 
         // LOCATION + LINE + COLUMN
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into())
+        let stack_trace = StackTraceBlock::new("/path/to/file.test")
             .line(15)
             .column(24);
         stack_trace.to_text(&log, true, &mut text);
@@ -268,8 +267,8 @@ mod tests {
 
         // LOCATION + INNER_PATH
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into())
-            .inner_path("path::t\no::class".into());
+        let stack_trace =
+            StackTraceBlock::new("/path/to/file.test").inner_path("path::t\no::class");
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(
@@ -282,8 +281,7 @@ mod tests {
 
         // LOCATION + MESSAGE
         let mut text = String::new();
-        let stack_trace =
-            StackTraceBlock::new("/path/to/file.test".into()).message("Multiline\nmessage".into());
+        let stack_trace = StackTraceBlock::new("/path/to/file.test").message("Multiline\nmessage");
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(
@@ -296,11 +294,11 @@ mod tests {
 
         // LOCATION + ALL
         let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test".into())
-            .inner_path("path::t\no::class".into())
+        let stack_trace = StackTraceBlock::new("/path/to/file.test")
+            .inner_path("path::t\no::class")
             .line(15)
             .column(24)
-            .message("Multiline\nmessage".into());
+            .message("Multiline\nmessage");
         stack_trace.to_text(&log, true, &mut text);
 
         assert_eq!(

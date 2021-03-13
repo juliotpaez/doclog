@@ -14,8 +14,11 @@ pub struct NoteBlock {
 impl NoteBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(title: ArcStr, message: ArcStr) -> NoteBlock {
-        NoteBlock { title, message }
+    pub fn new<T: Into<ArcStr>, M: Into<ArcStr>>(title: T, message: M) -> NoteBlock {
+        NoteBlock {
+            title: title.into(),
+            message: message.into(),
+        }
     }
 
     // GETTERS ----------------------------------------------------------------
@@ -32,13 +35,13 @@ impl NoteBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn title(mut self, title: ArcStr) -> Self {
-        self.title = title;
+    pub fn title<T: Into<ArcStr>>(mut self, title: T) -> Self {
+        self.title = title.into();
         self
     }
 
-    pub fn message(mut self, message: ArcStr) -> Self {
-        self.message = message;
+    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
+        self.message = message.into();
         self
     }
 
@@ -83,7 +86,7 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::info().note("title\nmultiline1".into(), "message\nmultiline2".into());
+        let log = Log::info().note("title\nmultiline1", "message\nmultiline2");
         let text = log.to_plain_text();
 
         assert_eq!(
@@ -94,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::info().note("title\nmultiline1".into(), "message\nmultiline2".into());
+        let log = Log::info().note("title\nmultiline1", "message\nmultiline2");
         let text = log.to_ansi_text();
 
         assert_eq!(

@@ -9,8 +9,10 @@ pub struct PlainTextBlock {
 impl PlainTextBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(message: ArcStr) -> PlainTextBlock {
-        PlainTextBlock { message }
+    pub fn new<M: Into<ArcStr>>(message: M) -> PlainTextBlock {
+        PlainTextBlock {
+            message: message.into(),
+        }
     }
 
     // GETTERS ----------------------------------------------------------------
@@ -22,8 +24,8 @@ impl PlainTextBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message(mut self, message: ArcStr) -> Self {
-        self.message = message;
+    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
+        self.message = message.into();
         self
     }
 
@@ -44,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::error().plain_text("This is\na test".into());
+        let log = Log::error().plain_text("This is\na test");
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("This is\na test"));
@@ -52,7 +54,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::info().plain_text("This is\na test".into());
+        let log = Log::info().plain_text("This is\na test");
         let text = log.to_ansi_text();
 
         assert_eq!(text, format!("This is\na test"));

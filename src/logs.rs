@@ -141,7 +141,7 @@ impl Log {
     }
 
     /// Adds a title block.
-    pub fn title(self, message: ArcStr, show_date: bool, show_thread: bool) -> Self {
+    pub fn title<M: Into<ArcStr>>(self, message: M, show_date: bool, show_thread: bool) -> Self {
         self.add_block(LogBlock::Title(TitleBlock::new(
             message,
             show_date,
@@ -150,12 +150,12 @@ impl Log {
     }
 
     /// Adds a new plain text block.
-    pub fn plain_text(self, text: ArcStr) -> Self {
+    pub fn plain_text<T: Into<ArcStr>>(self, text: T) -> Self {
         self.add_block(LogBlock::PlainText(PlainTextBlock::new(text)))
     }
 
     /// Adds a document block.
-    pub fn document<F>(self, content: ArcStr, builder: F) -> Self
+    pub fn document<F, C: Into<ArcStr>>(self, content: C, builder: F) -> Self
     where
         F: FnOnce(DocumentBlock) -> DocumentBlock,
     {
@@ -183,17 +183,17 @@ impl Log {
     }
 
     /// Adds a tag block.
-    pub fn tag(self, tag: ArcStr) -> Self {
+    pub fn tag<T: Into<ArcStr>>(self, tag: T) -> Self {
         self.add_block(LogBlock::Tag(TagBlock::new(tag)))
     }
 
     /// Adds a note block.
-    pub fn note(self, title: ArcStr, message: ArcStr) -> Self {
+    pub fn note<T: Into<ArcStr>, M: Into<ArcStr>>(self, title: T, message: M) -> Self {
         self.add_block(LogBlock::Note(NoteBlock::new(title, message)))
     }
 
     /// Adds a stack block.
-    pub fn stack<F>(self, message: ArcStr, builder: F) -> Self
+    pub fn stack<F, M: Into<ArcStr>>(self, message: M, builder: F) -> Self
     where
         F: FnOnce(StackBlock) -> StackBlock,
     {
