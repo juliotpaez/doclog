@@ -58,7 +58,7 @@ impl NoteBlock {
             in_ansi,
         ));
         buffer.push(' ');
-        buffer.push_str(&color_bold_if(title.to_string(), Color::Unset, in_ansi));
+        buffer.push_str(&color_bold_if(title, Color::Unset, in_ansi));
         buffer.push_str(&color_bold_if(
             ":".to_string(),
             log.level().color(),

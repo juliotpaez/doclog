@@ -121,11 +121,11 @@ impl StackTraceBlock {
         buffer.push_str(location.as_str());
 
         if let Some(line) = self.line {
-            buffer.push_str(":");
+            buffer.push(':');
             buffer.push_str(format!("{}", line).as_str());
 
             if let Some(column) = self.column {
-                buffer.push_str(":");
+                buffer.push(':');
                 buffer.push_str(format!("{}", column).as_str());
             }
         } else if let Some(column) = self.column {
@@ -134,24 +134,24 @@ impl StackTraceBlock {
         }
 
         if let Some(inner_path) = inner_path {
-            buffer.push_str(" ");
+            buffer.push(' ');
             buffer.push_str(&color_bold_if(
                 "at".to_string(),
                 log.level().color(),
                 in_ansi,
             ));
-            buffer.push_str(" ");
+            buffer.push(' ');
             buffer.push_str(inner_path.as_str());
         }
 
         if let Some(message) = message {
-            buffer.push_str(" ");
+            buffer.push(' ');
             buffer.push_str(&color_bold_if(
                 "-".to_string(),
                 log.level().color(),
                 in_ansi,
             ));
-            buffer.push_str(" ");
+            buffer.push(' ');
             buffer.push_str(message.as_str());
         }
     }

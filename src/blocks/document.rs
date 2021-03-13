@@ -226,7 +226,7 @@ impl DocumentBlock {
                     &color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
                 );
                 let title = indent_text(&title, &indent, false);
-                buffer.push_str(" ");
+                buffer.push(' ');
                 buffer.push_str(title.as_str());
             }
         } else {
@@ -265,7 +265,7 @@ impl DocumentBlock {
                         false,
                     )
                 };
-                buffer.push_str(" ");
+                buffer.push(' ');
                 buffer.push_str(title.as_str());
             }
 
@@ -455,7 +455,7 @@ impl DocumentBlock {
             ));
 
             if let Some(end_message) = &self.end_message {
-                buffer.push_str(" ");
+                buffer.push(' ');
                 buffer.push_str(indent_text(end_message.as_str(), "   ", false).as_str());
             }
         }
@@ -492,7 +492,7 @@ impl DocumentBlock {
             .flat_map(|s| {
                 // To normalizing multiline sections we must split them into two different sections.
                 if s.is_multiline_start {
-                    if s.content(&self.content).ends_with("\n") {
+                    if s.content(&self.content).ends_with('\n') {
                         let from = s.from.clone();
                         let to = Cursor::from_byte_offset_and_cursor(
                             &self.content,
@@ -505,7 +505,7 @@ impl DocumentBlock {
                                 from,
                                 to,
                                 message: s.message.clone(),
-                                color: s.color.clone(),
+                                color: s.color,
                                 is_multiline_start: false,
                                 is_multiline_end: false,
                                 is_cursor: false,
@@ -516,7 +516,7 @@ impl DocumentBlock {
                                     to: from.end_line_cursor(&self.content),
                                     from,
                                     message: None,
-                                    color: s.color.clone(),
+                                    color: s.color,
                                     is_multiline_start: true,
                                     is_multiline_end: false,
                                     is_cursor: false,
@@ -525,7 +525,7 @@ impl DocumentBlock {
                                     from: to.start_line_cursor(&self.content),
                                     to,
                                     message: s.message.clone(),
-                                    color: s.color.clone(),
+                                    color: s.color,
                                     is_multiline_start: false,
                                     is_multiline_end: true,
                                     is_cursor: false,
@@ -538,7 +538,7 @@ impl DocumentBlock {
                                 from: s.from.clone(),
                                 to: s.from.end_line_cursor(&self.content),
                                 message: None,
-                                color: s.color.clone(),
+                                color: s.color,
                                 is_multiline_start: true,
                                 is_multiline_end: false,
                                 is_cursor: false,
@@ -547,7 +547,7 @@ impl DocumentBlock {
                                 from: s.to.start_line_cursor(&self.content),
                                 to: s.to.clone(),
                                 message: s.message.clone(),
-                                color: s.color.clone(),
+                                color: s.color,
                                 is_multiline_start: false,
                                 is_multiline_end: true,
                                 is_cursor: false,

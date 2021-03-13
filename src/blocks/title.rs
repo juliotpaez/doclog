@@ -90,7 +90,7 @@ impl TitleBlock {
             log.level().color(),
             in_ansi,
         ));
-        buffer.push_str(" ");
+        buffer.push(' ');
 
         if let Some(date) = date {
             buffer.push_str(&color_bold_if(
@@ -98,9 +98,9 @@ impl TitleBlock {
                 log.level().color(),
                 in_ansi,
             ));
-            buffer.push_str(" ");
+            buffer.push(' ');
             buffer.push_str(&color_bold_if(date, Color::Unset, in_ansi));
-            buffer.push_str(" ");
+            buffer.push(' ');
         }
 
         if let Some(thread) = thread {
@@ -109,19 +109,19 @@ impl TitleBlock {
                 log.level().color(),
                 in_ansi,
             ));
-            buffer.push_str(" ");
+            buffer.push(' ');
             buffer.push_str(&color_bold_if(
                 "thread".to_string(),
                 log.level().color(),
                 in_ansi,
             ));
-            buffer.push_str(" ");
+            buffer.push(' ');
             buffer.push_str(&color_bold_if(
                 format!("\"{}\"", thread),
                 Color::Unset,
                 in_ansi,
             ));
-            buffer.push_str(" ");
+            buffer.push(' ');
         }
 
         buffer.push_str(&color_bold_if(
@@ -129,7 +129,7 @@ impl TitleBlock {
             log.level().color(),
             in_ansi,
         ));
-        buffer.push_str(" ");
+        buffer.push(' ');
         buffer.push_str(message.as_str());
     }
 }

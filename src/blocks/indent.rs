@@ -18,7 +18,7 @@ impl IndentBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The inner log of the indent.
-    pub fn get_log(&self) -> &Box<Log> {
+    pub fn get_log(&self) -> &Log {
         &self.log
     }
 

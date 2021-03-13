@@ -156,7 +156,7 @@ impl StackBlock {
                 in_ansi,
             ));
         }
-        buffer.push_str(" ");
+        buffer.push(' ');
         buffer.push_str(message.as_str());
 
         // TRACES
@@ -184,7 +184,7 @@ impl StackBlock {
                     log.level().color(),
                     in_ansi,
                 ));
-                buffer.push_str(" ");
+                buffer.push(' ');
             }
 
             trace_buffer.clear();

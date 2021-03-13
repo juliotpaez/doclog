@@ -42,7 +42,7 @@ impl TagBlock {
             in_ansi,
         ));
         buffer.push(' ');
-        buffer.push_str(&color_bold_if(tag.to_string(), Color::Unset, in_ansi));
+        buffer.push_str(&color_bold_if(tag, Color::Unset, in_ansi));
     }
 }
 
