@@ -1,5 +1,4 @@
-use std::sync::Arc;
-
+use arcstr::ArcStr;
 use yansi::Color;
 
 use crate::utils::text::{color_bold_if, remove_jump_lines};
@@ -8,32 +7,27 @@ use crate::Log;
 /// A block that prints a tag.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TagBlock {
-    tag: Arc<String>,
+    tag: ArcStr,
 }
 
 impl TagBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(tag: Arc<String>) -> TagBlock {
+    pub fn new(tag: ArcStr) -> TagBlock {
         TagBlock { tag }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The tag of the block.
-    pub fn get_tag(&self) -> &Arc<String> {
+    pub fn get_tag(&self) -> &ArcStr {
         &self.tag
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn tag(mut self, tag: Arc<String>) -> Self {
+    pub fn tag(mut self, tag: ArcStr) -> Self {
         self.tag = tag;
-        self
-    }
-
-    pub fn tag_str(mut self, tag: &str) -> Self {
-        self.tag = Arc::new(tag.to_string());
         self
     }
 
@@ -66,7 +60,7 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::info().tag_str("TAG");
+        let log = Log::info().tag("TAG".into());
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("= TAG"));
@@ -74,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::info().tag_str("TAG");
+        let log = Log::info().tag("TAG".into());
         let text = log.to_ansi_text();
 
         assert_eq!(

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use arcstr::ArcStr;
 
 use crate::blocks::StackTraceBlock;
 use crate::constants::{
@@ -10,7 +10,7 @@ use crate::Log;
 /// A error stack block.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct StackBlock {
-    message: Arc<String>,
+    message: ArcStr,
     traces: Vec<StackTraceBlock>,
     cause: Option<Box<StackBlock>>,
     show_stack_numbers: bool,
@@ -19,7 +19,7 @@ pub struct StackBlock {
 impl StackBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(message: Arc<String>) -> StackBlock {
+    pub fn new(message: ArcStr) -> StackBlock {
         StackBlock {
             message,
             traces: vec![],
@@ -31,7 +31,7 @@ impl StackBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The message of the stack
-    pub fn get_message(&self) -> &Arc<String> {
+    pub fn get_message(&self) -> &ArcStr {
         &self.message
     }
 
@@ -52,13 +52,8 @@ impl StackBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message(mut self, message: Arc<String>) -> Self {
+    pub fn message(mut self, message: ArcStr) -> Self {
         self.message = message;
-        self
-    }
-
-    pub fn message_str(mut self, message: &str) -> Self {
-        self.message = Arc::new(message.to_string());
         self
     }
 
@@ -70,7 +65,7 @@ impl StackBlock {
     // METHODS ----------------------------------------------------------------
 
     /// Adds a trace to the block.
-    pub fn trace<F>(mut self, location: Arc<String>, builder: F) -> Self
+    pub fn trace<F>(mut self, location: ArcStr, builder: F) -> Self
     where
         F: FnOnce(StackTraceBlock) -> StackTraceBlock,
     {
@@ -80,16 +75,8 @@ impl StackBlock {
         self
     }
 
-    /// Adds a trace to the block.
-    pub fn trace_str<F>(self, location: &str, builder: F) -> Self
-    where
-        F: FnOnce(StackTraceBlock) -> StackTraceBlock,
-    {
-        self.trace(Arc::new(location.to_string()), builder)
-    }
-
     /// Sets a cause to the block.
-    pub fn cause<F>(mut self, message: Arc<String>, builder: F) -> Self
+    pub fn cause<F>(mut self, message: ArcStr, builder: F) -> Self
     where
         F: FnOnce(StackBlock) -> StackBlock,
     {
@@ -97,14 +84,6 @@ impl StackBlock {
         let stack = builder(stack);
         self.cause = Some(Box::new(stack));
         self
-    }
-
-    /// Sets a cause to the block.
-    pub fn cause_str<F>(self, message: &str, builder: F) -> Self
-    where
-        F: FnOnce(StackBlock) -> StackBlock,
-    {
-        self.cause(Arc::new(message.to_string()), builder)
     }
 
     /// Clears the cause of the block.
@@ -253,7 +232,7 @@ mod tests {
     #[test]
     fn test_plain() {
         // MESSAGE
-        let log = Log::info().stack_str("This is\na message", |stack| {
+        let log = Log::info().stack("This is\na message".into(), |stack| {
             stack.show_stack_numbers(false)
         });
         let text = log.to_plain_text();
@@ -267,8 +246,9 @@ mod tests {
         );
 
         // MESSAGE + SHOW_NUMBERS
-        let log =
-            Log::info().stack_str("This is\na message", |stack| stack.show_stack_numbers(true));
+        let log = Log::info().stack("This is\na message".into(), |stack| {
+            stack.show_stack_numbers(true)
+        });
         let text = log.to_plain_text();
 
         assert_eq!(
@@ -280,11 +260,11 @@ mod tests {
         );
 
         // MESSAGE + TRACES
-        let log = Log::info().stack_str("Message", |stack| {
+        let log = Log::info().stack("Message".into(), |stack| {
             stack
                 .show_stack_numbers(false)
-                .trace_str("/path/to/file.test", |trace| trace)
-                .trace_str("/path/to/file2.test", |trace| trace)
+                .trace("/path/to/file.test".into(), |trace| trace)
+                .trace("/path/to/file2.test".into(), |trace| trace)
         });
         let text = log.to_plain_text();
 
@@ -302,19 +282,19 @@ mod tests {
         );
 
         // MESSAGE + TRACES + SHOW_NUMBERS
-        let log = Log::info().stack_str("Message", |stack| {
+        let log = Log::info().stack("Message".into(), |stack| {
             stack
                 .show_stack_numbers(true)
-                .trace_str("file10", |trace| trace)
-                .trace_str("file09", |trace| trace)
-                .trace_str("file08", |trace| trace)
-                .trace_str("file07", |trace| trace)
-                .trace_str("file06", |trace| trace)
-                .trace_str("file05", |trace| trace)
-                .trace_str("file04", |trace| trace)
-                .trace_str("file03", |trace| trace)
-                .trace_str("file02", |trace| trace)
-                .trace_str("file01", |trace| trace)
+                .trace("file10".into(), |trace| trace)
+                .trace("file09".into(), |trace| trace)
+                .trace("file08".into(), |trace| trace)
+                .trace("file07".into(), |trace| trace)
+                .trace("file06".into(), |trace| trace)
+                .trace("file05".into(), |trace| trace)
+                .trace("file04".into(), |trace| trace)
+                .trace("file03".into(), |trace| trace)
+                .trace("file02".into(), |trace| trace)
+                .trace("file01".into(), |trace| trace)
         });
         let text = log.to_plain_text();
 
@@ -343,8 +323,8 @@ mod tests {
     #[test]
     fn test_plain_with_cause() {
         // MESSAGE
-        let log = Log::info().stack_str("", |stack| {
-            stack.cause_str("This is\na message", |stack| stack)
+        let log = Log::info().stack("".into(), |stack| {
+            stack.cause("This is\na message".into(), |stack| stack)
         });
         let text = log.to_plain_text();
 
@@ -364,15 +344,17 @@ mod tests {
         );
 
         // MESSAGE + TRACES
-        let log = Log::info().stack_str("", |stack| {
+        let log = Log::info().stack("".into(), |stack| {
             stack
                 .show_stack_numbers(true)
-                .trace_str("File2", |trace| trace)
-                .trace_str("File1", |trace| trace)
-                .cause_str("Cause 1", |stack| {
+                .trace("File2".into(), |trace| trace)
+                .trace("File1".into(), |trace| trace)
+                .cause("Cause 1".into(), |stack| {
                     stack
-                        .trace_str("File3", |trace| trace)
-                        .cause_str("Cause 2", |stack| stack.trace_str("File4", |trace| trace))
+                        .trace("File3".into(), |trace| trace)
+                        .cause("Cause 2".into(), |stack| {
+                            stack.trace("File4".into(), |trace| trace)
+                        })
                 })
         });
         let text = log.to_plain_text();
@@ -402,7 +384,7 @@ mod tests {
     #[test]
     fn test_ansi() {
         // MESSAGE
-        let log = Log::info().stack_str("This is\na message", |stack| {
+        let log = Log::info().stack("This is\na message".into(), |stack| {
             stack.show_stack_numbers(false)
         });
         let text = log.to_ansi_text();
@@ -424,8 +406,9 @@ mod tests {
         );
 
         // MESSAGE + SHOW_NUMBERS
-        let log =
-            Log::info().stack_str("This is\na message", |stack| stack.show_stack_numbers(true));
+        let log = Log::info().stack("This is\na message".into(), |stack| {
+            stack.show_stack_numbers(true)
+        });
         let text = log.to_ansi_text();
 
         assert_eq!(
@@ -445,11 +428,11 @@ mod tests {
         );
 
         // MESSAGE + TRACES
-        let log = Log::info().stack_str("Message", |stack| {
+        let log = Log::info().stack("Message".into(), |stack| {
             stack
                 .show_stack_numbers(false)
-                .trace_str("/path/to/file.test", |trace| trace)
-                .trace_str("/path/to/file2.test", |trace| trace)
+                .trace("/path/to/file.test".into(), |trace| trace)
+                .trace("/path/to/file2.test".into(), |trace| trace)
         });
         let text = log.to_ansi_text();
 
@@ -473,19 +456,19 @@ mod tests {
         );
 
         // MESSAGE + TRACES + SHOW_NUMBERS
-        let log = Log::info().stack_str("Message", |stack| {
+        let log = Log::info().stack("Message".into(), |stack| {
             stack
                 .show_stack_numbers(true)
-                .trace_str("file10", |trace| trace)
-                .trace_str("file09", |trace| trace)
-                .trace_str("file08", |trace| trace)
-                .trace_str("file07", |trace| trace)
-                .trace_str("file06", |trace| trace)
-                .trace_str("file05", |trace| trace)
-                .trace_str("file04", |trace| trace)
-                .trace_str("file03", |trace| trace)
-                .trace_str("file02", |trace| trace)
-                .trace_str("file01", |trace| trace)
+                .trace("file10".into(), |trace| trace)
+                .trace("file09".into(), |trace| trace)
+                .trace("file08".into(), |trace| trace)
+                .trace("file07".into(), |trace| trace)
+                .trace("file06".into(), |trace| trace)
+                .trace("file05".into(), |trace| trace)
+                .trace("file04".into(), |trace| trace)
+                .trace("file03".into(), |trace| trace)
+                .trace("file02".into(), |trace| trace)
+                .trace("file01".into(), |trace| trace)
         });
         let text = log.to_ansi_text();
 
@@ -566,8 +549,8 @@ mod tests {
     #[test]
     fn test_ansi_with_cause() {
         // MESSAGE
-        let log = Log::info().stack_str("", |stack| {
-            stack.cause_str("This is\na message", |stack| stack)
+        let log = Log::info().stack("".into(), |stack| {
+            stack.cause("This is\na message".into(), |stack| stack)
         });
         let text = log.to_ansi_text();
 
@@ -595,15 +578,17 @@ mod tests {
         );
 
         // MESSAGE + TRACES
-        let log = Log::info().stack_str("", |stack| {
+        let log = Log::info().stack("".into(), |stack| {
             stack
                 .show_stack_numbers(true)
-                .trace_str("File2", |trace| trace)
-                .trace_str("File1", |trace| trace)
-                .cause_str("Cause 1", |stack| {
+                .trace("File2".into(), |trace| trace)
+                .trace("File1".into(), |trace| trace)
+                .cause("Cause 1".into(), |stack| {
                     stack
-                        .trace_str("File3", |trace| trace)
-                        .cause_str("Cause 2", |stack| stack.trace_str("File4", |trace| trace))
+                        .trace("File3".into(), |trace| trace)
+                        .cause("Cause 2".into(), |stack| {
+                            stack.trace("File4".into(), |trace| trace)
+                        })
                 })
         });
         let text = log.to_ansi_text();

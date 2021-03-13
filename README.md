@@ -9,8 +9,8 @@ The library is intended to be used building a `Log` using a builder:
 pub fn main() {
     let content = "let a = \"test\"\nlet y = 3\nlet z = x + y";
     let log = Log::info()
-        .title_str(
-            "A title", /* show date */ true, /* show thread */ false,
+        .title(
+            "A title".into(), /* show date */ true, /* show thread */ false,
         )
         .indent(|log| {
             log.document_str(content, |doc| {

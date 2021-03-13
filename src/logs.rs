@@ -1,7 +1,8 @@
 use std::fs;
 use std::option::Option::Some;
 use std::path::Path;
-use std::sync::Arc;
+
+use arcstr::ArcStr;
 
 use crate::blocks::{
     DocumentBlock, IndentBlock, LogBlock, NoteBlock, PlainTextBlock, SeparatorBlock, StackBlock,
@@ -140,7 +141,7 @@ impl Log {
     }
 
     /// Adds a title block.
-    pub fn title(self, message: Arc<String>, show_date: bool, show_thread: bool) -> Self {
+    pub fn title(self, message: ArcStr, show_date: bool, show_thread: bool) -> Self {
         self.add_block(LogBlock::Title(TitleBlock::new(
             message,
             show_date,
@@ -148,37 +149,19 @@ impl Log {
         )))
     }
 
-    /// Adds a title block.
-    pub fn title_str(self, message: &str, show_date: bool, show_thread: bool) -> Self {
-        self.title(Arc::new(message.to_string()), show_date, show_thread)
-    }
-
     /// Adds a new plain text block.
-    pub fn plain_text(self, text: Arc<String>) -> Self {
+    pub fn plain_text(self, text: ArcStr) -> Self {
         self.add_block(LogBlock::PlainText(PlainTextBlock::new(text)))
     }
 
-    /// Adds a new plain text block.
-    pub fn plain_text_str(self, text: &str) -> Self {
-        self.plain_text(Arc::new(text.to_string()))
-    }
-
     /// Adds a document block.
-    pub fn document<F>(self, content: Arc<String>, builder: F) -> Self
+    pub fn document<F>(self, content: ArcStr, builder: F) -> Self
     where
         F: FnOnce(DocumentBlock) -> DocumentBlock,
     {
-        let document = DocumentBlock::new(Arc::new(content.to_string()));
+        let document = DocumentBlock::new(content);
         let document = builder(document);
         self.add_block(LogBlock::Document(document))
-    }
-
-    /// Adds a document block.
-    pub fn document_str<F>(self, content: &str, builder: F) -> Self
-    where
-        F: FnOnce(DocumentBlock) -> DocumentBlock,
-    {
-        self.document(Arc::new(content.to_string()), builder)
     }
 
     /// Adds a separator block.
@@ -200,41 +183,23 @@ impl Log {
     }
 
     /// Adds a tag block.
-    pub fn tag(self, tag: Arc<String>) -> Self {
+    pub fn tag(self, tag: ArcStr) -> Self {
         self.add_block(LogBlock::Tag(TagBlock::new(tag)))
     }
 
-    /// Adds a tag block.
-    pub fn tag_str(self, tag: &str) -> Self {
-        self.add_block(LogBlock::Tag(TagBlock::new(Arc::new(tag.to_string()))))
-    }
-
     /// Adds a note block.
-    pub fn note(self, title: Arc<String>, message: Arc<String>) -> Self {
+    pub fn note(self, title: ArcStr, message: ArcStr) -> Self {
         self.add_block(LogBlock::Note(NoteBlock::new(title, message)))
     }
 
-    /// Adds a note block.
-    pub fn note_str(self, title: &str, message: &str) -> Self {
-        self.note(Arc::new(title.to_string()), Arc::new(message.to_string()))
-    }
-
     /// Adds a stack block.
-    pub fn stack<F>(self, message: Arc<String>, builder: F) -> Self
+    pub fn stack<F>(self, message: ArcStr, builder: F) -> Self
     where
         F: FnOnce(StackBlock) -> StackBlock,
     {
         let stack = StackBlock::new(message);
         let stack = builder(stack);
         self.add_block(LogBlock::Stack(stack))
-    }
-
-    /// Adds a stack block.
-    pub fn stack_str<F>(self, message: &str, builder: F) -> Self
-    where
-        F: FnOnce(StackBlock) -> StackBlock,
-    {
-        self.stack(Arc::new(message.to_string()), builder)
     }
 
     /// Adds an indent block.

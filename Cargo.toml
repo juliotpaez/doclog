@@ -6,9 +6,9 @@ authors = ["Julio Treviño Páez <julio.tpaez@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+arcstr = { version = "1.0.0", features = ["substr-usize-indices"] }
 bytecount = "0.6.2"
 chrono = "0.4.19"
-lazy_static = "1.4.0"
 memchr = "2.3.4"
-yansi = "0.5.0"
 strip-ansi-escapes = "0.1.0"
+yansi = "0.5.0"

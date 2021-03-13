@@ -1,5 +1,4 @@
-use std::sync::Arc;
-
+use arcstr::ArcStr;
 use yansi::Color;
 
 use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
@@ -8,48 +7,38 @@ use crate::Log;
 /// A block that prints a note.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NoteBlock {
-    title: Arc<String>,
-    message: Arc<String>,
+    title: ArcStr,
+    message: ArcStr,
 }
 
 impl NoteBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(title: Arc<String>, message: Arc<String>) -> NoteBlock {
+    pub fn new(title: ArcStr, message: ArcStr) -> NoteBlock {
         NoteBlock { title, message }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The title of the block.
-    pub fn get_title(&self) -> &Arc<String> {
+    pub fn get_title(&self) -> &ArcStr {
         &self.title
     }
 
     /// The message of the block.
-    pub fn get_message(&self) -> &Arc<String> {
+    pub fn get_message(&self) -> &ArcStr {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn title(mut self, title: Arc<String>) -> Self {
+    pub fn title(mut self, title: ArcStr) -> Self {
         self.title = title;
         self
     }
 
-    pub fn title_str(mut self, title: &str) -> Self {
-        self.title = Arc::new(title.to_string());
-        self
-    }
-
-    pub fn message(mut self, message: Arc<String>) -> Self {
+    pub fn message(mut self, message: ArcStr) -> Self {
         self.message = message;
-        self
-    }
-
-    pub fn message_str(mut self, message: &str) -> Self {
-        self.message = Arc::new(message.to_string());
         self
     }
 
@@ -94,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::info().note_str("title\nmultiline1", "message\nmultiline2");
+        let log = Log::info().note("title\nmultiline1".into(), "message\nmultiline2".into());
         let text = log.to_plain_text();
 
         assert_eq!(
@@ -105,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::info().note_str("title\nmultiline1", "message\nmultiline2");
+        let log = Log::info().note("title\nmultiline1".into(), "message\nmultiline2".into());
         let text = log.to_ansi_text();
 
         assert_eq!(

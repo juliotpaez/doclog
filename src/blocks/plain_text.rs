@@ -1,34 +1,29 @@
-use std::sync::Arc;
+use arcstr::ArcStr;
 
 /// A block that prints a plain text.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PlainTextBlock {
-    message: Arc<String>,
+    message: ArcStr,
 }
 
 impl PlainTextBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(message: Arc<String>) -> PlainTextBlock {
+    pub fn new(message: ArcStr) -> PlainTextBlock {
         PlainTextBlock { message }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The message to print.
-    pub fn get_message(&self) -> &Arc<String> {
+    pub fn get_message(&self) -> &ArcStr {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message(mut self, message: Arc<String>) -> Self {
+    pub fn message(mut self, message: ArcStr) -> Self {
         self.message = message;
-        self
-    }
-
-    pub fn message_str(mut self, message: &str) -> Self {
-        self.message = Arc::new(message.to_string());
         self
     }
 
@@ -49,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_plain() {
-        let log = Log::error().plain_text_str("This is\na test");
+        let log = Log::error().plain_text("This is\na test".into());
         let text = log.to_plain_text();
 
         assert_eq!(text, format!("This is\na test"));
@@ -57,7 +52,7 @@ mod tests {
 
     #[test]
     fn test_ansi() {
-        let log = Log::info().plain_text_str("This is\na test");
+        let log = Log::info().plain_text("This is\na test".into());
         let text = log.to_ansi_text();
 
         assert_eq!(text, format!("This is\na test"));

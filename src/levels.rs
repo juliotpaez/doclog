@@ -1,30 +1,28 @@
 use std::cmp::Ordering;
-use std::ops::Deref;
 
+use arcstr::ArcStr;
 use yansi::Color;
 
-lazy_static! {
-    /// The trace log level. Level = 1000.
-    pub static ref TRACE: LogLevel = LogLevel::new(1000, "trace".to_string(), Color::Fixed(102));
+/// The trace log level. Level = 1000.
+pub static TRACE: LogLevel = LogLevel::new(1000, arcstr::literal!("trace"), Color::Fixed(102));
 
-    /// The debug log level. Level = 2000.
-    pub static ref DEBUG: LogLevel = LogLevel::new(2000, "debug".to_string(), Color::Green);
+/// The debug log level. Level = 2000.
+pub static DEBUG: LogLevel = LogLevel::new(2000, arcstr::literal!("debug"), Color::Green);
 
-    /// The info log level. Level = 3000.
-    pub static ref INFO: LogLevel = LogLevel::new(3000, "info".to_string(), Color::Blue);
+/// The info log level. Level = 3000.
+pub static INFO: LogLevel = LogLevel::new(3000, arcstr::literal!("info"), Color::Blue);
 
-    /// The warn log level. Level = 4000.
-    pub static ref WARN: LogLevel = LogLevel::new(4000, "warn".to_string(), Color::Yellow);
+/// The warn log level. Level = 4000.
+pub static WARN: LogLevel = LogLevel::new(4000, arcstr::literal!("warn"), Color::Yellow);
 
-    /// The error log level. Level = 5000.
-    pub static ref ERROR: LogLevel = LogLevel::new(5000, "error".to_string(), Color::Red);
-}
+/// The error log level. Level = 5000.
+pub static ERROR: LogLevel = LogLevel::new(5000, arcstr::literal!("error"), Color::Red);
 
 /// The different levels of logging.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct LogLevel {
     level: usize,
-    tag: String,
+    tag: ArcStr,
     color: Color,
 }
 
@@ -32,7 +30,7 @@ impl LogLevel {
     // CONSTRUCTORS -----------------------------------------------------------
 
     /// Builds a new log level.
-    pub const fn new(level: usize, tag: String, color: Color) -> LogLevel {
+    pub const fn new(level: usize, tag: ArcStr, color: Color) -> LogLevel {
         LogLevel { level, tag, color }
     }
 
@@ -42,7 +40,7 @@ impl LogLevel {
         self.level
     }
 
-    pub fn tag(&self) -> &str {
+    pub fn tag(&self) -> &ArcStr {
         &self.tag
     }
 
@@ -53,23 +51,23 @@ impl LogLevel {
     // STATIC METHODS ---------------------------------------------------------
 
     pub fn trace() -> LogLevel {
-        TRACE.deref().clone()
+        TRACE.clone()
     }
 
     pub fn debug() -> LogLevel {
-        DEBUG.deref().clone()
+        DEBUG.clone()
     }
 
     pub fn info() -> LogLevel {
-        INFO.deref().clone()
+        INFO.clone()
     }
 
     pub fn warn() -> LogLevel {
-        WARN.deref().clone()
+        WARN.clone()
     }
 
     pub fn error() -> LogLevel {
-        ERROR.deref().clone()
+        ERROR.clone()
     }
 }
 
@@ -91,18 +89,13 @@ impl Ord for LogLevel {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
-
     use super::*;
 
     #[test]
     fn test_order() {
-        assert!(
-            TRACE.deref() < DEBUG.deref(),
-            "TRACE is not less than DEBUG"
-        );
-        assert!(DEBUG.deref() < INFO.deref(), "DEBUG is not less than INFO");
-        assert!(INFO.deref() < WARN.deref(), "INFO is not less than WARN");
-        assert!(WARN.deref() < ERROR.deref(), "WARN is not less than ERROR");
+        assert!(TRACE < DEBUG, "TRACE is not less than DEBUG");
+        assert!(DEBUG < INFO, "DEBUG is not less than INFO");
+        assert!(INFO < WARN, "INFO is not less than WARN");
+        assert!(WARN < ERROR, "WARN is not less than ERROR");
     }
 }
