@@ -1,8 +1,8 @@
+use std::borrow::Cow;
 use std::cmp::max;
 use std::ops::Range;
 use std::option::Option::Some;
 
-use arcstr::ArcStr;
 use yansi::Color;
 
 use crate::constants::{
@@ -17,23 +17,23 @@ use crate::Log;
 
 /// A block that prints a section of a document.
 #[derive(Debug, Clone)]
-pub struct DocumentBlock {
-    content: ArcStr,
-    sections: RangeMap<HighlightedSection>,
-    related_block: Option<Box<DocumentBlock>>,
-    title: Option<ArcStr>,
-    file_path: Option<ArcStr>,
-    end_message: Option<ArcStr>,
+pub struct DocumentBlock<'a> {
+    content: Cow<'a, str>,
+    sections: RangeMap<HighlightedSection<'a>>,
+    related_block: Option<Box<DocumentBlock<'a>>>,
+    title: Option<Cow<'a, str>>,
+    file_path: Option<Cow<'a, str>>,
+    end_message: Option<Cow<'a, str>>,
     show_new_line_chars: bool,
     secondary_color: Color,
 }
 
-impl DocumentBlock {
+impl<'a> DocumentBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new<C: Into<ArcStr>>(content: C) -> DocumentBlock {
+    pub fn new(content: Cow<'a, str>) -> DocumentBlock {
         DocumentBlock {
-            content: content.into(),
+            content,
             sections: RangeMap::new(),
             related_block: None,
             title: None,
@@ -47,7 +47,7 @@ impl DocumentBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The document content of the block.
-    pub fn get_content(&self) -> &ArcStr {
+    pub fn get_content(&self) -> &Cow<'a, str> {
         &self.content
     }
 
@@ -57,19 +57,19 @@ impl DocumentBlock {
     }
 
     /// The title message to show at the top of the block.
-    pub fn get_title(&self) -> &Option<ArcStr> {
+    pub fn get_title(&self) -> &Option<Cow<'a, str>> {
         &self.title
     }
 
     /// The file path of the document.
     /// Ignored if the block belongs to another one as a related block.
-    pub fn get_file_path(&self) -> &Option<ArcStr> {
+    pub fn get_file_path(&self) -> &Option<Cow<'a, str>> {
         &self.file_path
     }
 
     /// The final message to show at the bottom of the block.
     /// Ignored if the block belongs to another one as a related block.
-    pub fn get_end_message(&self) -> &Option<ArcStr> {
+    pub fn get_end_message(&self) -> &Option<Cow<'a, str>> {
         &self.end_message
     }
 
@@ -85,7 +85,7 @@ impl DocumentBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn title<T: Into<ArcStr>>(mut self, title: T) -> Self {
+    pub fn title(mut self, title: impl Into<Cow<'a, str>>) -> Self {
         self.title = Some(title.into());
         self
     }
@@ -95,7 +95,7 @@ impl DocumentBlock {
         self
     }
 
-    pub fn file_path<F: Into<ArcStr>>(mut self, file_path: F) -> Self {
+    pub fn file_path(mut self, file_path: impl Into<Cow<'a, str>>) -> Self {
         self.file_path = Some(file_path.into());
         self
     }
@@ -105,7 +105,7 @@ impl DocumentBlock {
         self
     }
 
-    pub fn end_message<M: Into<ArcStr>>(mut self, end_message: M) -> Self {
+    pub fn end_message(mut self, end_message: impl Into<Cow<'a, str>>) -> Self {
         self.end_message = Some(end_message.into());
         self
     }
@@ -130,40 +130,40 @@ impl DocumentBlock {
     /// Highlights a cursor position.
     /// Equals to `highlight_section(position..position, ..)`.
     pub fn highlight_cursor(self, position: usize, color: Option<Color>) -> Self {
-        self.highlight_section_inner::<&str>(position..position, None, color)
+        self.highlight_section_inner(position..position, None, color)
     }
 
     /// Highlights a cursor position.
     /// Equals to `highlight_section(position..position, ..)`.
-    pub fn highlight_cursor_message<M: Into<ArcStr>>(
+    pub fn highlight_cursor_message(
         self,
         position: usize,
-        message: M,
+        message: impl Into<Cow<'a, str>>,
         color: Option<Color>,
     ) -> Self {
-        self.highlight_section_inner(position..position, Some(message), color)
+        self.highlight_section_inner(position..position, Some(message.into()), color)
     }
 
     /// Highlights a section.
     pub fn highlight_section(self, range: Range<usize>, color: Option<Color>) -> Self {
-        self.highlight_section_inner::<&str>(range, None, color)
+        self.highlight_section_inner(range, None, color)
     }
 
     /// Highlights a section with a message.
-    pub fn highlight_section_message<M: Into<ArcStr>>(
+    pub fn highlight_section_message(
         self,
         range: Range<usize>,
-        message: M,
+        message: impl Into<Cow<'a, str>>,
         color: Option<Color>,
     ) -> Self {
-        self.highlight_section_inner(range, Some(message), color)
+        self.highlight_section_inner(range, Some(message.into()), color)
     }
 
     /// Highlights a section.
-    fn highlight_section_inner<M: Into<ArcStr>>(
+    fn highlight_section_inner(
         mut self,
         range: Range<usize>,
-        message: Option<M>,
+        message: Option<Cow<'a, str>>,
         color: Option<Color>,
     ) -> Self {
         assert!(
@@ -178,7 +178,7 @@ impl DocumentBlock {
             HighlightedSection {
                 to: from.clone(),
                 from,
-                message: message.map(|v| v.into()),
+                message,
                 color,
                 is_multiline_start: false,
                 is_multiline_end: false,
@@ -191,7 +191,7 @@ impl DocumentBlock {
             HighlightedSection {
                 from,
                 to,
-                message: message.map(|v| v.into()),
+                message,
                 color,
                 is_multiline_start: is_multiline,
                 is_multiline_end: is_multiline,
@@ -228,7 +228,7 @@ impl DocumentBlock {
 
     fn to_text_with_options(
         &self,
-        log: &Log,
+        log: &Log<'a>,
         in_ansi: bool,
         buffer: &mut String,
         is_related_block: bool,
@@ -292,7 +292,7 @@ impl DocumentBlock {
 
             // FILE
             if let Some(file_path) = &self.file_path {
-                let file_path = remove_jump_lines(file_path.as_str());
+                let file_path = remove_jump_lines(file_path.as_ref());
 
                 buffer.push('\n');
                 buffer.push_str(&color_bold_if(
@@ -477,12 +477,16 @@ impl DocumentBlock {
 
             if let Some(end_message) = &self.end_message {
                 buffer.push(' ');
-                buffer.push_str(indent_text(end_message.as_str(), "   ", false).as_str());
+                buffer.push_str(indent_text(end_message, "   ", false).as_str());
             }
         }
     }
 
-    fn normalize_sections(&self, document: &DocumentBlock, log: &Log) -> Vec<HighlightedSection> {
+    fn normalize_sections(
+        &self,
+        document: &DocumentBlock<'a>,
+        log: &Log<'a>,
+    ) -> Vec<HighlightedSection> {
         let mut color = log.level().color();
         self.sections
             .iter()
@@ -587,8 +591,8 @@ impl DocumentBlock {
 
     fn get_sections_in_same_line(
         &self,
-        sections: &mut Vec<HighlightedSection>,
-        sections_in_same_line: &mut Vec<HighlightedSection>,
+        sections: &mut Vec<HighlightedSection<'a>>,
+        sections_in_same_line: &mut Vec<HighlightedSection<'a>>,
     ) {
         let section = sections.remove(0);
         let line = section.from.line;
@@ -613,25 +617,25 @@ impl DocumentBlock {
 // ----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-struct HighlightedSection {
+struct HighlightedSection<'a> {
     // Inclusive range from..=to.
     from: Cursor,
     to: Cursor,
-    message: Option<ArcStr>,
+    message: Option<Cow<'a, str>>,
     color: Option<Color>,
     is_multiline_start: bool,
     is_multiline_end: bool,
     is_cursor: bool,
 }
 
-impl HighlightedSection {
+impl<'a> HighlightedSection<'a> {
     // GETTERS ----------------------------------------------------------------
 
     pub fn char_len(&self) -> usize {
         self.to.char_offset - self.from.char_offset
     }
 
-    pub fn content<'a>(&self, text: &'a str) -> &'a str {
+    pub fn content(&self, text: &'a str) -> &'a str {
         self.from.slice(text, &self.to)
     }
 

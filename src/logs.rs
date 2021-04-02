@@ -1,8 +1,7 @@
+use std::borrow::Cow;
 use std::fs;
 use std::option::Option::Some;
 use std::path::Path;
-
-use arcstr::ArcStr;
 
 use crate::blocks::{
     DocumentBlock, IndentBlock, LogBlock, NoteBlock, PlainTextBlock, SeparatorBlock, StackBlock,
@@ -12,17 +11,17 @@ use crate::{is_ansi_supported, LogLevel};
 
 /// A configured log.
 #[derive(Debug, Clone)]
-pub struct Log {
+pub struct Log<'a> {
     level: LogLevel,
-    blocks: Vec<LogBlock>,
-    cause: Option<Box<Log>>,
+    blocks: Vec<LogBlock<'a>>,
+    cause: Option<Box<Log<'a>>>,
 }
 
-impl Log {
+impl<'a> Log<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
     /// Builds a new log.
-    pub fn new(level: LogLevel) -> Log {
+    pub fn new(level: LogLevel) -> Log<'a> {
         Log {
             level,
             blocks: Vec::new(),
@@ -31,27 +30,27 @@ impl Log {
     }
 
     /// Builds a new log with a trace level.
-    pub fn trace() -> Log {
+    pub fn trace() -> Log<'a> {
         Self::new(LogLevel::trace())
     }
 
     /// Builds a new log with a debug level.
-    pub fn debug() -> Log {
+    pub fn debug() -> Log<'a> {
         Self::new(LogLevel::debug())
     }
 
     /// Builds a new log with a info level.
-    pub fn info() -> Log {
+    pub fn info() -> Log<'a> {
         Self::new(LogLevel::info())
     }
 
     /// Builds a new log with a warn level.
-    pub fn warn() -> Log {
+    pub fn warn() -> Log<'a> {
         Self::new(LogLevel::warn())
     }
 
     /// Builds a new log with a error level.
-    pub fn error() -> Log {
+    pub fn error() -> Log<'a> {
         Self::new(LogLevel::error())
     }
 
@@ -61,11 +60,11 @@ impl Log {
         &self.level
     }
 
-    pub fn blocks(&self) -> &Vec<LogBlock> {
+    pub fn blocks(&self) -> &Vec<LogBlock<'a>> {
         &self.blocks
     }
 
-    pub fn cause(&self) -> &Option<Box<Log>> {
+    pub fn cause(&self) -> &Option<Box<Log<'a>>> {
         &self.cause
     }
 
@@ -131,35 +130,40 @@ impl Log {
     }
 }
 
-impl Log {
+impl<'a> Log<'a> {
     // METHODS ----------------------------------------------------------------
 
     /// Adds a new block.
-    pub fn add_block(mut self, block: LogBlock) -> Self {
+    pub fn add_block(mut self, block: LogBlock<'a>) -> Self {
         self.blocks.push(block);
         self
     }
 
     /// Adds a title block.
-    pub fn title<M: Into<ArcStr>>(self, message: M, show_date: bool, show_thread: bool) -> Self {
+    pub fn title(
+        self,
+        message: impl Into<Cow<'a, str>>,
+        show_date: bool,
+        show_thread: bool,
+    ) -> Self {
         self.add_block(LogBlock::Title(TitleBlock::new(
-            message,
+            message.into(),
             show_date,
             show_thread,
         )))
     }
 
     /// Adds a new plain text block.
-    pub fn plain_text<T: Into<ArcStr>>(self, text: T) -> Self {
-        self.add_block(LogBlock::PlainText(PlainTextBlock::new(text)))
+    pub fn plain_text(self, text: impl Into<Cow<'a, str>>) -> Self {
+        self.add_block(LogBlock::PlainText(PlainTextBlock::new(text.into())))
     }
 
     /// Adds a document block.
-    pub fn document<F, C: Into<ArcStr>>(self, content: C, builder: F) -> Self
+    pub fn document<F>(self, content: impl Into<Cow<'a, str>>, builder: F) -> Self
     where
-        F: FnOnce(DocumentBlock) -> DocumentBlock,
+        F: FnOnce(DocumentBlock<'a>) -> DocumentBlock<'a>,
     {
-        let document = DocumentBlock::new(content);
+        let document = DocumentBlock::new(content.into());
         let document = builder(document);
         self.add_block(LogBlock::Document(document))
     }
@@ -172,7 +176,7 @@ impl Log {
     /// Adds an indent block.
     pub fn indent<F>(self, indent: usize, builder: F) -> Self
     where
-        F: FnOnce(Log) -> Log,
+        F: FnOnce(Log<'a>) -> Log<'a>,
     {
         let new_log = Log::new(self.level.clone());
         let new_log = builder(new_log);
@@ -183,21 +187,21 @@ impl Log {
     }
 
     /// Adds a tag block.
-    pub fn tag<T: Into<ArcStr>>(self, tag: T) -> Self {
-        self.add_block(LogBlock::Tag(TagBlock::new(tag)))
+    pub fn tag(self, tag: impl Into<Cow<'a, str>>) -> Self {
+        self.add_block(LogBlock::Tag(TagBlock::new(tag.into())))
     }
 
     /// Adds a note block.
-    pub fn note<T: Into<ArcStr>, M: Into<ArcStr>>(self, title: T, message: M) -> Self {
-        self.add_block(LogBlock::Note(NoteBlock::new(title, message)))
+    pub fn note(self, title: impl Into<Cow<'a, str>>, message: impl Into<Cow<'a, str>>) -> Self {
+        self.add_block(LogBlock::Note(NoteBlock::new(title.into(), message.into())))
     }
 
     /// Adds a stack block.
-    pub fn stack<F, M: Into<ArcStr>>(self, message: M, builder: F) -> Self
+    pub fn stack<F>(self, message: impl Into<Cow<'a, str>>, builder: F) -> Self
     where
         F: FnOnce(StackBlock) -> StackBlock,
     {
-        let stack = StackBlock::new(message);
+        let stack = StackBlock::new(message.into());
         let stack = builder(stack);
         self.add_block(LogBlock::Stack(stack))
     }

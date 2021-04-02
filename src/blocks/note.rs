@@ -1,4 +1,5 @@
-use arcstr::ArcStr;
+use std::borrow::Cow;
+
 use yansi::Color;
 
 use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
@@ -6,42 +7,39 @@ use crate::Log;
 
 /// A block that prints a note.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NoteBlock {
-    title: ArcStr,
-    message: ArcStr,
+pub struct NoteBlock<'a> {
+    title: Cow<'a, str>,
+    message: Cow<'a, str>,
 }
 
-impl NoteBlock {
+impl<'a> NoteBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new<T: Into<ArcStr>, M: Into<ArcStr>>(title: T, message: M) -> NoteBlock {
-        NoteBlock {
-            title: title.into(),
-            message: message.into(),
-        }
+    pub fn new(title: Cow<'a, str>, message: Cow<'a, str>) -> NoteBlock<'a> {
+        NoteBlock { title, message }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The title of the block.
-    pub fn get_title(&self) -> &ArcStr {
+    pub fn get_title(&self) -> &Cow<'a, str> {
         &self.title
     }
 
     /// The message of the block.
-    pub fn get_message(&self) -> &ArcStr {
+    pub fn get_message(&self) -> &Cow<'a, str> {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn title<T: Into<ArcStr>>(mut self, title: T) -> Self {
-        self.title = title.into();
+    pub fn title(mut self, title: Cow<'a, str>) -> Self {
+        self.title = title;
         self
     }
 
-    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
-        self.message = message.into();
+    pub fn message(mut self, message: Cow<'a, str>) -> Self {
+        self.message = message;
         self
     }
 
@@ -50,7 +48,7 @@ impl NoteBlock {
     pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
         let title = remove_jump_lines(&self.title);
         let message = indent_text(
-            self.message.as_str(),
+            self.message.as_ref(),
             " ".repeat(4 + title.len()).as_str(),
             false,
         );

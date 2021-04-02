@@ -1,28 +1,27 @@
 use std::cmp::Ordering;
 
-use arcstr::ArcStr;
 use yansi::Color;
 
 /// The trace log level. Level = 1000.
-pub static TRACE: LogLevel = LogLevel::new(1000, arcstr::literal!("trace"), Color::Fixed(102));
+pub static TRACE: LogLevel = LogLevel::new(1000, "trace", Color::Fixed(102));
 
 /// The debug log level. Level = 2000.
-pub static DEBUG: LogLevel = LogLevel::new(2000, arcstr::literal!("debug"), Color::Green);
+pub static DEBUG: LogLevel = LogLevel::new(2000, "debug", Color::Green);
 
 /// The info log level. Level = 3000.
-pub static INFO: LogLevel = LogLevel::new(3000, arcstr::literal!("info"), Color::Blue);
+pub static INFO: LogLevel = LogLevel::new(3000, "info", Color::Blue);
 
 /// The warn log level. Level = 4000.
-pub static WARN: LogLevel = LogLevel::new(4000, arcstr::literal!("warn"), Color::Yellow);
+pub static WARN: LogLevel = LogLevel::new(4000, "warn", Color::Yellow);
 
 /// The error log level. Level = 5000.
-pub static ERROR: LogLevel = LogLevel::new(5000, arcstr::literal!("error"), Color::Red);
+pub static ERROR: LogLevel = LogLevel::new(5000, "error", Color::Red);
 
 /// The different levels of logging.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct LogLevel {
     level: usize,
-    tag: ArcStr,
+    tag: &'static str,
     color: Color,
 }
 
@@ -30,7 +29,7 @@ impl LogLevel {
     // CONSTRUCTORS -----------------------------------------------------------
 
     /// Builds a new log level.
-    pub const fn new(level: usize, tag: ArcStr, color: Color) -> LogLevel {
+    pub const fn new(level: usize, tag: &'static str, color: Color) -> LogLevel {
         LogLevel { level, tag, color }
     }
 
@@ -40,8 +39,8 @@ impl LogLevel {
         self.level
     }
 
-    pub fn tag(&self) -> &ArcStr {
-        &self.tag
+    pub fn tag(&self) -> &'static str {
+        self.tag
     }
 
     pub fn color(&self) -> Color {

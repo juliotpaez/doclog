@@ -1,4 +1,5 @@
-use arcstr::ArcStr;
+use std::borrow::Cow;
+
 use yansi::Color;
 
 use crate::utils::text::{color_bold_if, remove_jump_lines};
@@ -6,34 +7,34 @@ use crate::Log;
 
 /// A block that prints a tag.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TagBlock {
-    tag: ArcStr,
+pub struct TagBlock<'a> {
+    tag: Cow<'a, str>,
 }
 
-impl TagBlock {
+impl<'a> TagBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new<T: Into<ArcStr>>(tag: T) -> TagBlock {
-        TagBlock { tag: tag.into() }
+    pub fn new(tag: Cow<'a, str>) -> TagBlock {
+        TagBlock { tag }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The tag of the block.
-    pub fn get_tag(&self) -> &ArcStr {
+    pub fn get_tag(&self) -> &Cow<'a, str> {
         &self.tag
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn tag<T: Into<ArcStr>>(mut self, tag: T) -> Self {
-        self.tag = tag.into();
+    pub fn tag(mut self, tag: Cow<'a, str>) -> Self {
+        self.tag = tag;
         self
     }
 
     // METHODS ----------------------------------------------------------------
 
-    pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
+    pub(crate) fn to_text(&self, log: &Log<'a>, in_ansi: bool, buffer: &mut String) {
         let tag = remove_jump_lines(&self.tag);
 
         buffer.push_str(&color_bold_if(

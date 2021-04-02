@@ -1,24 +1,23 @@
+use std::borrow::Cow;
 use std::option::Option::Some;
-
-use arcstr::ArcStr;
 
 use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
 use crate::Log;
 
 /// A trace message of a stack block.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct StackTraceBlock {
-    location: ArcStr,
-    inner_path: Option<ArcStr>,
+pub struct StackTraceBlock<'a> {
+    location: Cow<'a, str>,
+    inner_path: Option<Cow<'a, str>>,
     line: Option<usize>,
     column: Option<usize>,
-    message: Option<ArcStr>,
+    message: Option<Cow<'a, str>>,
 }
 
-impl StackTraceBlock {
+impl<'a> StackTraceBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new<L: Into<ArcStr>>(location: L) -> StackTraceBlock {
+    pub fn new(location: impl Into<Cow<'a, str>>) -> StackTraceBlock<'a> {
         StackTraceBlock {
             location: location.into(),
             inner_path: None,
@@ -31,12 +30,12 @@ impl StackTraceBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The file path of the trace.
-    pub fn get_location(&self) -> &ArcStr {
+    pub fn get_location(&self) -> &Cow<'a, str> {
         &self.location
     }
 
     /// The relative path of the trace inside a file, e.g. class.method.
-    pub fn get_inner_path(&self) -> &Option<ArcStr> {
+    pub fn get_inner_path(&self) -> &Option<Cow<'a, str>> {
         &self.inner_path
     }
 
@@ -51,18 +50,18 @@ impl StackTraceBlock {
     }
 
     /// The message to show.
-    pub fn get_message(&self) -> &Option<ArcStr> {
+    pub fn get_message(&self) -> &Option<Cow<'a, str>> {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn location<L: Into<ArcStr>>(mut self, location: L) -> Self {
+    pub fn location(mut self, location: impl Into<Cow<'a, str>>) -> Self {
         self.location = location.into();
         self
     }
 
-    pub fn inner_path<P: Into<ArcStr>>(mut self, inner_path: P) -> Self {
+    pub fn inner_path(mut self, inner_path: impl Into<Cow<'a, str>>) -> Self {
         self.inner_path = Some(inner_path.into());
         self
     }
@@ -92,7 +91,7 @@ impl StackTraceBlock {
         self
     }
 
-    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
+    pub fn message(mut self, message: impl Into<Cow<'a, str>>) -> Self {
         self.message = Some(message.into());
         self
     }
@@ -104,7 +103,7 @@ impl StackTraceBlock {
 
     // METHODS ----------------------------------------------------------------
 
-    pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
+    pub(crate) fn to_text(&self, log: &Log<'a>, in_ansi: bool, buffer: &mut String) {
         let location = remove_jump_lines(&self.location);
         let inner_path = if let Some(inner_path) = &self.inner_path {
             Some(remove_jump_lines(&inner_path))

@@ -1,4 +1,5 @@
-use arcstr::ArcStr;
+use std::borrow::Cow;
+
 use chrono::{SecondsFormat, Utc};
 use yansi::Color;
 
@@ -7,18 +8,18 @@ use crate::Log;
 
 /// A block that prints a title.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TitleBlock {
-    message: ArcStr,
+pub struct TitleBlock<'a> {
+    message: Cow<'a, str>,
     show_date: bool,
     show_thread: bool,
 }
 
-impl TitleBlock {
+impl<'a> TitleBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new<M: Into<ArcStr>>(message: M, show_date: bool, show_thread: bool) -> TitleBlock {
+    pub fn new(message: Cow<'a, str>, show_date: bool, show_thread: bool) -> TitleBlock {
         TitleBlock {
-            message: message.into(),
+            message,
             show_date,
             show_thread,
         }
@@ -27,7 +28,7 @@ impl TitleBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The message of the block.
-    pub fn get_message(&self) -> &ArcStr {
+    pub fn get_message(&self) -> &Cow<'a, str> {
         &self.message
     }
 
@@ -43,8 +44,8 @@ impl TitleBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
-        self.message = message.into();
+    pub fn message(mut self, message: Cow<'a, str>) -> Self {
+        self.message = message;
         self
     }
 
@@ -58,7 +59,7 @@ impl TitleBlock {
 
     // METHODS ----------------------------------------------------------------
 
-    pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
+    pub(crate) fn to_text(&self, log: &Log<'a>, in_ansi: bool, buffer: &mut String) {
         let tag = log.level().tag();
         let header_size = tag.len() + 3;
 
@@ -80,7 +81,7 @@ impl TitleBlock {
         };
 
         let message = indent_text(
-            self.message.as_str(),
+            self.message.as_ref(),
             " ".repeat(header_size).as_str(),
             false,
         );

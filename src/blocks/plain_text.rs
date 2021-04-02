@@ -1,38 +1,36 @@
-use arcstr::ArcStr;
+use std::borrow::Cow;
 
 /// A block that prints a plain text.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct PlainTextBlock {
-    message: ArcStr,
+pub struct PlainTextBlock<'a> {
+    message: Cow<'a, str>,
 }
 
-impl PlainTextBlock {
+impl<'a> PlainTextBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new<M: Into<ArcStr>>(message: M) -> PlainTextBlock {
-        PlainTextBlock {
-            message: message.into(),
-        }
+    pub fn new(message: Cow<'a, str>) -> PlainTextBlock {
+        PlainTextBlock { message }
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// The message to print.
-    pub fn get_message(&self) -> &ArcStr {
+    pub fn get_message(&self) -> &Cow<'a, str> {
         &self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
-        self.message = message.into();
+    pub fn message(mut self, message: Cow<'a, str>) -> Self {
+        self.message = message;
         self
     }
 
     // METHODS ----------------------------------------------------------------
 
     pub(crate) fn to_text(&self, buffer: &mut String) {
-        buffer.push_str(self.get_message());
+        buffer.push_str(self.get_message().as_ref());
     }
 }
 

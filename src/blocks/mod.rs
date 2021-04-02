@@ -23,18 +23,18 @@ mod title;
 
 /// One block that belongs to a log.
 #[derive(Debug, Clone)]
-pub enum LogBlock {
-    Title(TitleBlock),
-    PlainText(PlainTextBlock),
-    Document(DocumentBlock),
+pub enum LogBlock<'a> {
+    Title(TitleBlock<'a>),
+    PlainText(PlainTextBlock<'a>),
+    Document(DocumentBlock<'a>),
     Separator(SeparatorBlock),
-    Indent(IndentBlock),
-    Stack(StackBlock),
-    Tag(TagBlock),
-    Note(NoteBlock),
+    Indent(IndentBlock<'a>),
+    Stack(StackBlock<'a>),
+    Tag(TagBlock<'a>),
+    Note(NoteBlock<'a>),
 }
 
-impl LogBlock {
+impl<'a> LogBlock<'a> {
     pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
         match self {
             LogBlock::Title(block) => {

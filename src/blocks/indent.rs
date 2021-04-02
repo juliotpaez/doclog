@@ -3,15 +3,15 @@ use crate::Log;
 
 /// A block that prints a line separator.
 #[derive(Debug, Clone)]
-pub struct IndentBlock {
+pub struct IndentBlock<'a> {
     indent: usize,
-    log: Box<Log>,
+    log: Box<Log<'a>>,
 }
 
-impl IndentBlock {
+impl<'a> IndentBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(indent: usize, log: Box<Log>) -> IndentBlock {
+    pub fn new(indent: usize, log: Box<Log<'a>>) -> IndentBlock<'a> {
         IndentBlock { indent, log }
     }
 
@@ -29,7 +29,7 @@ impl IndentBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn log(mut self, log: Box<Log>) -> Self {
+    pub fn log(mut self, log: Box<Log<'a>>) -> Self {
         self.log = log;
         self
     }

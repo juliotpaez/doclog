@@ -1,4 +1,4 @@
-use arcstr::ArcStr;
+use std::borrow::Cow;
 
 use crate::blocks::StackTraceBlock;
 use crate::constants::{
@@ -9,17 +9,17 @@ use crate::Log;
 
 /// A error stack block.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct StackBlock {
-    message: ArcStr,
-    traces: Vec<StackTraceBlock>,
-    cause: Option<Box<StackBlock>>,
+pub struct StackBlock<'a> {
+    message: Cow<'a, str>,
+    traces: Vec<StackTraceBlock<'a>>,
+    cause: Option<Box<StackBlock<'a>>>,
     show_stack_numbers: bool,
 }
 
-impl StackBlock {
+impl<'a> StackBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new<M: Into<ArcStr>>(message: M) -> StackBlock {
+    pub fn new(message: impl Into<Cow<'a, str>>) -> StackBlock<'a> {
         StackBlock {
             message: message.into(),
             traces: vec![],
@@ -31,7 +31,7 @@ impl StackBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The message of the stack
-    pub fn get_message(&self) -> &ArcStr {
+    pub fn get_message(&self) -> &Cow<'a, str> {
         &self.message
     }
 
@@ -52,8 +52,8 @@ impl StackBlock {
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message<M: Into<ArcStr>>(mut self, message: M) -> Self {
-        self.message = message.into();
+    pub fn message(mut self, message: Cow<'a, str>) -> Self {
+        self.message = message;
         self
     }
 
@@ -65,9 +65,9 @@ impl StackBlock {
     // METHODS ----------------------------------------------------------------
 
     /// Adds a trace to the block.
-    pub fn trace<F, M: Into<ArcStr>>(mut self, location: M, builder: F) -> Self
+    pub fn trace<F>(mut self, location: impl Into<Cow<'a, str>>, builder: F) -> Self
     where
-        F: FnOnce(StackTraceBlock) -> StackTraceBlock,
+        F: FnOnce(StackTraceBlock<'a>) -> StackTraceBlock<'a>,
     {
         let trace = StackTraceBlock::new(location);
         let trace = builder(trace);
@@ -76,11 +76,11 @@ impl StackBlock {
     }
 
     /// Sets a cause to the block.
-    pub fn cause<F, M: Into<ArcStr>>(mut self, message: M, builder: F) -> Self
+    pub fn cause<F>(mut self, message: impl Into<Cow<'a, str>>, builder: F) -> Self
     where
-        F: FnOnce(StackBlock) -> StackBlock,
+        F: FnOnce(StackBlock<'a>) -> StackBlock<'a>,
     {
-        let stack = StackBlock::new(message);
+        let stack = StackBlock::new(message.into());
         let stack = builder(stack);
         self.cause = Some(Box::new(stack));
         self
@@ -104,7 +104,7 @@ impl StackBlock {
 
     fn to_text_with_options(
         &self,
-        log: &Log,
+        log: &Log<'a>,
         in_ansi: bool,
         buffer: &mut String,
         initial_trace_number: usize,
@@ -115,7 +115,7 @@ impl StackBlock {
 
         let message = if is_cause {
             indent_text(
-                self.get_message(),
+                self.get_message().as_ref(),
                 format!(
                     "{}             ",
                     color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
@@ -125,7 +125,7 @@ impl StackBlock {
             )
         } else {
             indent_text(
-                self.get_message(),
+                self.get_message().as_ref(),
                 format!(
                     "{}  ",
                     color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
