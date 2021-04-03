@@ -407,7 +407,12 @@ impl<'a> DocumentBlock<'a> {
                 let arrow_lines_height = max(
                     sections_in_same_line
                         .iter()
-                        .filter(|v| v.message.is_some() || v.is_multiline_start)
+                        .enumerate()
+                        .filter(|(i, v)| {
+                            v.message.is_some()
+                                || v.is_multiline_start
+                                || *i == sections_in_same_line.len() - 1
+                        })
                         .count(),
                     1, /* This is because there is always one line */
                 );
@@ -1091,6 +1096,28 @@ mod tests {
     }
 
     #[test]
+    fn test_plain_last_without_message() {
+        let text = "Test";
+        let log = Log::info().document(text, |document| {
+            document
+                .show_new_line_chars(true)
+                .title("Code")
+                .highlight_section_message(0..2, "Test", None)
+                .highlight_section(2..4, None)
+        });
+        let text = log.to_plain_text();
+
+        assert_eq!(
+            &text,
+            "┌─ Code\n\
+             │   1  Test\n\
+             │      ├┘└┘\n\
+             │      └───── Test\n\
+             └─"
+        );
+    }
+
+    #[test]
     fn test_ansi() {
         let text = "First\ntest\nthird\nline";
         let log = Log::info().document(text, |document| {
@@ -1378,6 +1405,49 @@ mod tests {
                 end,
             ),
             "Test 3"
+        );
+    }
+
+    #[test]
+    fn test_ansi_last_without_message() {
+        let text = "Test";
+        let log = Log::info().document(text, |document| {
+            document
+                .show_new_line_chars(true)
+                .title("Code")
+                .highlight_section_message(0..2, "Test", None)
+                .highlight_section(2..4, None)
+        });
+        let text = log.to_ansi_text();
+
+        println!("{}", text);
+
+        let start_title = Style::new(LogLevel::info().color()).bold().paint("┌─");
+        let end = Style::new(LogLevel::info().color()).bold().paint("└─");
+        let single_bar = Style::new(LogLevel::info().color())
+            .bold()
+            .paint(VERTICAL_BAR);
+        assert_eq!(
+            text,
+            format!(
+                "{} Code\n\
+                 {}   {}  {}{}\n\
+                 {}      {}{}\n\
+                 {}      {}{} Test\n\
+                 {}",
+                start_title,
+                single_bar,
+                Style::new(Color::Blue).bold().paint("1"),
+                Style::new(Color::Blue).bold().paint("Te"),
+                Style::new(Color::Magenta).bold().paint("st"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("├┘"),
+                Style::new(Color::Magenta).bold().paint("└┘"),
+                single_bar,
+                Style::new(Color::Blue).bold().paint("└"),
+                Style::new(Color::Blue).bold().paint("─────"),
+                end
+            ),
         );
     }
 }
