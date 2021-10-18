@@ -1,13 +1,19 @@
 [package]
 name = "doclog"
-description = "A Rust log library based on Rust's compiler logs"
 version = "0.1.0"
 authors = ["Julio Treviño Páez <julio.tpaez@gmail.com>"]
+description = "A Rust log library based on Rust's compiler logs"
+repository = "https://github.com/juliotpaez/doclog"
+documentation = "https://docs.rs/doclog"
+readme = "README.md"
+keywords = ["log", "rust"]
+categories = ["development-tools::debugging"]
+license = "MIT"
 edition = "2018"
 
 [dependencies]
 bytecount = "0.6.2"
 chrono = "0.4.19"
-memchr = "2.3.4"
-strip-ansi-escapes = "0.1.0"
+memchr = "2.4.1"
+strip-ansi-escapes = "0.1.1"
 yansi = "0.5.0"
