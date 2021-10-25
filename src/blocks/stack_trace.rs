@@ -105,17 +105,15 @@ impl<'a> StackTraceBlock<'a> {
 
     pub(crate) fn to_text(&self, log: &Log<'a>, in_ansi: bool, buffer: &mut String) {
         let location = remove_jump_lines(&self.location);
-        let inner_path = if let Some(inner_path) = &self.inner_path {
-            Some(remove_jump_lines(&inner_path))
-        } else {
-            None
-        };
+        let inner_path = self
+            .inner_path
+            .as_ref()
+            .map(|inner_path| remove_jump_lines(inner_path));
 
-        let message = if let Some(message) = &self.message {
-            Some(indent_text(message, "    ", false))
-        } else {
-            None
-        };
+        let message = self
+            .message
+            .as_ref()
+            .map(|message| indent_text(message, "    ", false));
 
         buffer.push_str(location.as_str());
 
@@ -176,21 +174,21 @@ mod tests {
         let stack_trace = StackTraceBlock::new("/path/to/file.test");
         stack_trace.to_text(&log, false, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test"));
+        assert_eq!(text, "/path/to/file.test");
 
         // LOCATION + LINE
         let mut text = String::new();
         let stack_trace = StackTraceBlock::new("/path/to/file.test").line(15);
         stack_trace.to_text(&log, false, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test:15"));
+        assert_eq!(text, "/path/to/file.test:15");
 
         // LOCATION + COLUMN
         let mut text = String::new();
         let stack_trace = StackTraceBlock::new("/path/to/file.test").column(24);
         stack_trace.to_text(&log, false, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test:??:24"));
+        assert_eq!(text, "/path/to/file.test:??:24");
 
         // LOCATION + LINE + COLUMN
         let mut text = String::new();
@@ -199,7 +197,7 @@ mod tests {
             .column(24);
         stack_trace.to_text(&log, false, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test:15:24"));
+        assert_eq!(text, "/path/to/file.test:15:24");
 
         // LOCATION + INNER_PATH
         let mut text = String::new();
@@ -207,14 +205,14 @@ mod tests {
             StackTraceBlock::new("/path/t\no/file.test").inner_path("path::t\no::class");
         stack_trace.to_text(&log, false, &mut text);
 
-        assert_eq!(text, format!("/path/t o/file.test at path::t o::class"));
+        assert_eq!(text, "/path/t o/file.test at path::t o::class");
 
         // LOCATION + MESSAGE
         let mut text = String::new();
         let stack_trace = StackTraceBlock::new("/path/to/file.test").message("Multiline\nmessage");
         stack_trace.to_text(&log, false, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test - Multiline\n    message"));
+        assert_eq!(text, "/path/to/file.test - Multiline\n    message");
 
         // LOCATION + ALL
         let mut text = String::new();
@@ -227,7 +225,7 @@ mod tests {
 
         assert_eq!(
             text,
-            format!("/path/to/file.test:15:24 at path::t o::class - Multiline\n    message")
+            "/path/to/file.test:15:24 at path::t o::class - Multiline\n    message"
         );
     }
 
@@ -239,21 +237,21 @@ mod tests {
         let stack_trace = StackTraceBlock::new("/path/to/file.test");
         stack_trace.to_text(&log, true, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test"));
+        assert_eq!(text, "/path/to/file.test");
 
         // LOCATION + LINE
         let mut text = String::new();
         let stack_trace = StackTraceBlock::new("/path/to/file.test").line(15);
         stack_trace.to_text(&log, true, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test:15"));
+        assert_eq!(text, "/path/to/file.test:15");
 
         // LOCATION + COLUMN
         let mut text = String::new();
         let stack_trace = StackTraceBlock::new("/path/to/file.test").column(24);
         stack_trace.to_text(&log, true, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test:??:24"));
+        assert_eq!(text, "/path/to/file.test:??:24");
 
         // LOCATION + LINE + COLUMN
         let mut text = String::new();
@@ -262,7 +260,7 @@ mod tests {
             .column(24);
         stack_trace.to_text(&log, true, &mut text);
 
-        assert_eq!(text, format!("/path/to/file.test:15:24"));
+        assert_eq!(text, "/path/to/file.test:15:24");
 
         // LOCATION + INNER_PATH
         let mut text = String::new();

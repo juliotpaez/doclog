@@ -47,7 +47,7 @@ mod tests {
         let log = Log::error().plain_text("This is\na test");
         let text = log.to_plain_text();
 
-        assert_eq!(text, format!("This is\na test"));
+        assert_eq!(text, "This is\na test");
     }
 
     #[test]
@@ -55,6 +55,6 @@ mod tests {
         let log = Log::info().plain_text("This is\na test");
         let text = log.to_ansi_text();
 
-        assert_eq!(text, format!("This is\na test"));
+        assert_eq!(text, "This is\na test");
     }
 }

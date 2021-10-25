@@ -52,12 +52,12 @@ mod tests {
         let log = Log::info().separator(0);
         let text = log.to_plain_text();
 
-        assert_eq!(text, format!(""));
+        assert_eq!(text, "");
 
         let log = Log::error().separator(10);
         let text = log.to_plain_text();
 
-        assert_eq!(text, format!("──────────"));
+        assert_eq!(text, "──────────");
     }
 
     #[test]

@@ -89,7 +89,7 @@ mod tests {
 
         assert_eq!(
             text,
-            format!("= title multiline1: message\n                    multiline2")
+            "= title multiline1: message\n                    multiline2"
         );
     }
 

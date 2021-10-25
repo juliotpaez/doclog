@@ -21,7 +21,7 @@ impl Cursor {
             byte_offset,
             char_offset: bytecount::num_chars(prev_text.as_bytes()),
             line: bytecount::count(prev_text.as_bytes(), b'\n') + 1,
-            column: bytecount::num_chars(&prev_text[start_line_offset..].as_bytes()) + 1,
+            column: bytecount::num_chars(prev_text[start_line_offset..].as_bytes()) + 1,
         }
     }
 
@@ -31,8 +31,9 @@ impl Cursor {
             return cursor.clone();
         }
 
+        let prev_text = &text[..byte_offset];
+
         if cursor.byte_offset < byte_offset {
-            let prev_text = &text[..byte_offset];
             let slice_from_cursor = &text[cursor.byte_offset..byte_offset];
             let start_line_offset = match memchr::memrchr(b'\n', prev_text.as_bytes()) {
                 Some(v) => v + 1,
@@ -44,10 +45,9 @@ impl Cursor {
                 char_offset: cursor.char_offset
                     + bytecount::num_chars(slice_from_cursor.as_bytes()),
                 line: cursor.line + bytecount::count(slice_from_cursor.as_bytes(), b'\n'),
-                column: bytecount::num_chars(&prev_text[start_line_offset..].as_bytes()) + 1,
+                column: bytecount::num_chars(prev_text[start_line_offset..].as_bytes()) + 1,
             }
         } else {
-            let prev_text = &text[..byte_offset];
             let slice_to_cursor = &text[byte_offset..cursor.byte_offset];
             let start_line_offset = match memchr::memrchr(b'\n', prev_text.as_bytes()) {
                 Some(v) => v + 1,
@@ -58,7 +58,7 @@ impl Cursor {
                 byte_offset,
                 char_offset: cursor.char_offset - bytecount::num_chars(slice_to_cursor.as_bytes()),
                 line: cursor.line - bytecount::count(slice_to_cursor.as_bytes(), b'\n'),
-                column: bytecount::num_chars(&prev_text[start_line_offset..].as_bytes()) + 1,
+                column: bytecount::num_chars(prev_text[start_line_offset..].as_bytes()) + 1,
             }
         }
     }

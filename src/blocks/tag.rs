@@ -64,7 +64,7 @@ mod tests {
         let log = Log::info().tag("TAG");
         let text = log.to_plain_text();
 
-        assert_eq!(text, format!("= TAG"));
+        assert_eq!(text, "= TAG");
     }
 
     #[test]

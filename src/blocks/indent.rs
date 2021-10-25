@@ -69,7 +69,7 @@ mod tests {
         let log = Log::error().indent(4, |log| log.plain_text("Plain\ntext"));
         let text = log.to_plain_text();
 
-        assert_eq!(text, format!("    Plain\n    text"));
+        assert_eq!(text, "    Plain\n    text");
     }
 
     #[test]
@@ -77,6 +77,6 @@ mod tests {
         let log = Log::error().indent(2, |log| log.plain_text("Plain\ntext"));
         let text = log.to_ansi_text();
 
-        assert_eq!(text, format!("  Plain\n  text"));
+        assert_eq!(text, "  Plain\n  text");
     }
 }

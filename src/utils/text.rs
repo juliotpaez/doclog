@@ -59,15 +59,15 @@ mod tests {
     #[test]
     fn test_indent_text() {
         let result = indent_text("this\nis\na\ntest", "---", false);
-        assert_eq!(result, format!("this\n---is\n---a\n---test"));
+        assert_eq!(result, "this\n---is\n---a\n---test");
 
         let result = indent_text("this\nis\na\ntest", "---", true);
-        assert_eq!(result, format!("---this\n---is\n---a\n---test"));
+        assert_eq!(result, "---this\n---is\n---a\n---test");
     }
 
     #[test]
     fn test_remove_jump_lines() {
         let result = remove_jump_lines("this\nis\na\ntest");
-        assert_eq!(result, format!("this is a test"));
+        assert_eq!(result, "this is a test");
     }
 }

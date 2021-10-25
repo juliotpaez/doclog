@@ -154,10 +154,7 @@ mod tests {
         let log = Log::info().title("This is a\nmultiline\nmessage", false, false);
         let text = log.to_plain_text();
 
-        assert_eq!(
-            text,
-            format!("info - This is a\n       multiline\n       message")
-        );
+        assert_eq!(text, "info - This is a\n       multiline\n       message");
 
         // MESSAGE + THREAD
         let thread = std::thread::current()
@@ -180,27 +177,21 @@ mod tests {
         let log = Log::info().title("This is a\nmultiline\nmessage", true, false);
         let text = log.to_plain_text();
 
-        assert_eq!(
-            text.split(year_first_digit).next().unwrap(),
-            format!("info at ")
-        );
+        assert_eq!(text.split(year_first_digit).next().unwrap(), "info at ");
 
         assert_eq!(
-            text.split("Z").last().unwrap(),
-            format!(" - This is a\n       multiline\n       message")
+            text.split('Z').last().unwrap(),
+            " - This is a\n       multiline\n       message"
         );
 
         // MESSAGE + DATE + THREAD
         let log = Log::info().title("This is a\nmultiline\nmessage", true, true);
         let text = log.to_plain_text();
 
-        assert_eq!(
-            text.split(year_first_digit).next().unwrap(),
-            format!("info at ")
-        );
+        assert_eq!(text.split(year_first_digit).next().unwrap(), "info at ");
 
         assert_eq!(
-            text.split("Z").last().unwrap(),
+            text.split('Z').last().unwrap(),
             format!(
                 " in thread \"{}\" - This is a\n       multiline\n       message",
                 thread
@@ -273,7 +264,7 @@ mod tests {
         );
 
         assert_eq!(
-            text.split("Z").last().unwrap(),
+            text.split('Z').last().unwrap(),
             format!(
                 "{} {} This is a\n       multiline\n       message",
                 Style::new(Color::Unset)
@@ -314,7 +305,7 @@ mod tests {
         );
 
         assert_eq!(
-            text.split("Z").last().unwrap(),
+            text.split('Z').last().unwrap(),
             format!(
                 "{} {} {} {} {} This is a\n       multiline\n       message",
                 Style::new(Color::Unset)

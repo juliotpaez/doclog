@@ -246,7 +246,7 @@ impl<'a> DocumentBlock<'a> {
                     "{}  ",
                     &color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
                 );
-                let title = indent_text(&title, &indent, false);
+                let title = indent_text(title, &indent, false);
                 buffer.push(' ');
                 buffer.push_str(title.as_str());
             }
@@ -271,7 +271,7 @@ impl<'a> DocumentBlock<'a> {
             if let Some(title) = &self.title {
                 let title = if self.file_path.is_some() {
                     indent_text(
-                        &title,
+                        title,
                         &color_bold_if(
                             format!("{}{}  ", VERTICAL_BAR, VERTICAL_BAR),
                             log.level().color(),
@@ -281,7 +281,7 @@ impl<'a> DocumentBlock<'a> {
                     )
                 } else {
                     indent_text(
-                        &title,
+                        title,
                         &color_bold_if(format!("{}  ", VERTICAL_BAR), log.level().color(), in_ansi),
                         false,
                     )
