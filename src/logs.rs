@@ -70,6 +70,16 @@ impl<'a> Log<'a> {
 
     // METHODS ----------------------------------------------------------------
 
+    /// Logs in the console the plain text of the log.
+    pub fn log_plain_text(&self) {
+        println!("{}", self.to_plain_text());
+    }
+
+    /// Logs in the console the ANSI text of the log.
+    pub fn log_ansi_text(&self) {
+        println!("{}", self.to_ansi_text());
+    }
+
     /// Logs in the console an ANSI or plain text depending on whether
     /// the ANSI colors are supported in the executing terminal or not.
     pub fn log(&self) {
