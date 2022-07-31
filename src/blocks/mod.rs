@@ -63,4 +63,17 @@ impl<'a> LogBlock<'a> {
             }
         }
     }
+
+    pub fn make_owned<'b>(&self) -> LogBlock<'b> {
+        match self {
+            LogBlock::Title(v) => LogBlock::Title(v.make_owned()),
+            LogBlock::PlainText(v) => LogBlock::PlainText(v.make_owned()),
+            LogBlock::Document(v) => LogBlock::Document(v.make_owned()),
+            LogBlock::Separator(v) => LogBlock::Separator(v.clone()),
+            LogBlock::Indent(v) => LogBlock::Indent(v.make_owned()),
+            LogBlock::Stack(v) => LogBlock::Stack(v.make_owned()),
+            LogBlock::Tag(v) => LogBlock::Tag(v.make_owned()),
+            LogBlock::Note(v) => LogBlock::Note(v.make_owned()),
+        }
+    }
 }

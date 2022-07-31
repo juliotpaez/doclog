@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::option::Option::Some;
 
 use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
 use crate::Log;
@@ -150,6 +149,16 @@ impl<'a> StackTraceBlock<'a> {
             ));
             buffer.push(' ');
             buffer.push_str(message.as_str());
+        }
+    }
+
+    pub fn make_owned<'b>(&self) -> StackTraceBlock<'b> {
+        StackTraceBlock {
+            location: Cow::Owned(self.location.to_string()),
+            inner_path: self.inner_path.as_ref().map(|v| Cow::Owned(v.to_string())),
+            line: self.column,
+            column: self.column,
+            message: self.message.as_ref().map(|v| Cow::Owned(v.to_string())),
         }
     }
 }

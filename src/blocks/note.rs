@@ -68,6 +68,13 @@ impl<'a> NoteBlock<'a> {
         buffer.push(' ');
         buffer.push_str(message.as_str());
     }
+
+    pub fn make_owned<'b>(&self) -> NoteBlock<'b> {
+        NoteBlock {
+            title: Cow::Owned(self.title.to_string()),
+            message: Cow::Owned(self.message.to_string()),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

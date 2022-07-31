@@ -45,6 +45,12 @@ impl<'a> TagBlock<'a> {
         buffer.push(' ');
         buffer.push_str(&color_bold_if(tag, Color::Unset, in_ansi));
     }
+
+    pub fn make_owned<'b>(&self) -> TagBlock<'b> {
+        TagBlock {
+            tag: Cow::Owned(self.tag.to_string()),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

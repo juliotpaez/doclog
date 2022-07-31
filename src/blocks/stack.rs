@@ -1,6 +1,6 @@
+use crate::blocks::StackTraceBlock;
 use std::borrow::Cow;
 
-use crate::blocks::StackTraceBlock;
 use crate::constants::{
     BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, TOP_RIGHT_CORNER, VERTICAL_BAR, VERTICAL_RIGHT_BAR,
 };
@@ -213,6 +213,15 @@ impl<'a> StackBlock<'a> {
                 log.level().color(),
                 in_ansi,
             ));
+        }
+    }
+
+    pub fn make_owned<'b>(&self) -> StackBlock<'b> {
+        StackBlock {
+            message: Cow::Owned(self.message.to_string()),
+            traces: self.traces.iter().map(|v| v.make_owned()).collect(),
+            cause: self.cause.as_ref().map(|v| Box::new(v.make_owned())),
+            show_stack_numbers: self.show_stack_numbers,
         }
     }
 }

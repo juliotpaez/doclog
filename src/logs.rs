@@ -138,10 +138,6 @@ impl<'a> Log<'a> {
             cause.to_text_internal(in_ansi, buffer);
         }
     }
-}
-
-impl<'a> Log<'a> {
-    // METHODS ----------------------------------------------------------------
 
     /// Adds a new block.
     pub fn add_block(mut self, block: LogBlock<'a>) -> Self {
@@ -225,5 +221,13 @@ impl<'a> Log<'a> {
         let new_log = builder(new_log);
         self.cause = Some(Box::new(new_log));
         self
+    }
+
+    pub fn make_owned<'b>(&self) -> Log<'b> {
+        Log {
+            level: self.level.clone(),
+            blocks: self.blocks.iter().map(|v| v.make_owned()).collect(),
+            cause: self.cause.as_ref().map(|v| Box::new(v.make_owned())),
+        }
     }
 }

@@ -54,6 +54,13 @@ impl<'a> IndentBlock<'a> {
             .as_str(),
         );
     }
+
+    pub fn make_owned<'b>(&self) -> IndentBlock<'b> {
+        IndentBlock {
+            indent: self.indent,
+            log: Box::new(self.log.make_owned()),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

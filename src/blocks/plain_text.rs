@@ -32,6 +32,12 @@ impl<'a> PlainTextBlock<'a> {
     pub(crate) fn to_text(&self, buffer: &mut String) {
         buffer.push_str(self.get_message().as_ref());
     }
+
+    pub fn make_owned<'b>(&self) -> PlainTextBlock<'b> {
+        PlainTextBlock {
+            message: Cow::Owned(self.message.to_string()),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

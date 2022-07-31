@@ -592,6 +592,30 @@ impl<'a> DocumentBlock<'a> {
             .collect()
     }
 
+    pub fn make_owned<'b>(&self) -> DocumentBlock<'b> {
+        DocumentBlock {
+            content: Cow::Owned(self.content.to_string()),
+            sections: {
+                let mut map = RangeMap::new();
+
+                for (range, value) in self.sections.iter() {
+                    map.insert(range.clone(), value.make_owned());
+                }
+
+                map
+            },
+            related_block: self
+                .related_block
+                .as_ref()
+                .map(|v| Box::new(v.make_owned())),
+            title: self.title.as_ref().map(|v| Cow::Owned(v.to_string())),
+            file_path: self.file_path.as_ref().map(|v| Cow::Owned(v.to_string())),
+            end_message: self.end_message.as_ref().map(|v| Cow::Owned(v.to_string())),
+            show_new_line_chars: self.show_new_line_chars,
+            secondary_color: self.secondary_color,
+        }
+    }
+
     // STATIC METHODS ---------------------------------------------------------
 
     fn get_sections_in_same_line(
@@ -666,7 +690,7 @@ impl<'a> HighlightedSection<'a> {
             let content = self.content(&document.content);
 
             buffer.push_str(&color_bold_if(
-                content.replace("\t", " ").replace("\r", " "),
+                content.replace('\t', " ").replace('\r', " "),
                 self.color.unwrap(),
                 in_ansi,
             ));
@@ -951,6 +975,18 @@ impl<'a> HighlightedSection<'a> {
         buffer.push_str(&color_bold_if(bars, self.color.unwrap(), in_ansi));
         buffer.push(' ');
         buffer.push_str(&remove_jump_lines(message));
+    }
+
+    pub fn make_owned<'b>(&self) -> HighlightedSection<'b> {
+        HighlightedSection {
+            from: self.from.clone(),
+            to: self.to.clone(),
+            message: self.message.as_ref().map(|v| Cow::Owned(v.to_string())),
+            color: self.color,
+            is_multiline_start: self.is_multiline_start,
+            is_multiline_end: self.is_multiline_end,
+            is_cursor: self.is_cursor,
+        }
     }
 }
 

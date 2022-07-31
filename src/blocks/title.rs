@@ -133,6 +133,14 @@ impl<'a> TitleBlock<'a> {
         buffer.push(' ');
         buffer.push_str(message.as_str());
     }
+
+    pub fn make_owned<'b>(&self) -> TitleBlock<'b> {
+        TitleBlock {
+            message: Cow::Owned(self.message.to_string()),
+            show_date: self.show_date,
+            show_thread: self.show_thread,
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
