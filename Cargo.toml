@@ -13,7 +13,7 @@ edition = "2021"
 
 [dependencies]
 bytecount = "0.6.3"
-chrono = "0.4.19"
+chrono = "0.4.25"
 memchr = "2.5.0"
 strip-ansi-escapes = "0.1.1"
 yansi = "0.5.1"

@@ -181,7 +181,7 @@ mod tests {
         );
 
         // MESSAGE + DATE
-        let year_first_digit = Utc::today().to_string().chars().next().unwrap();
+        let year_first_digit = Utc::now().date_naive().to_string().chars().next().unwrap();
         let log = Log::info().title("This is a\nmultiline\nmessage", true, false);
         let text = log.to_plain_text();
 
@@ -249,7 +249,7 @@ mod tests {
         );
 
         // MESSAGE + DATE
-        let year = Utc::today().year().to_string();
+        let year = Utc::now().year().to_string();
         let log = Log::info().title("This is a\nmultiline\nmessage", true, false);
         let text = log.to_ansi_text();
 

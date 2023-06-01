@@ -127,13 +127,14 @@ impl<'a> DocumentBlock<'a> {
 
     // METHODS ----------------------------------------------------------------
 
-    /// Highlights a cursor position.
+    /// Highlights a cursor adding a colored and underlined dot at its position.
     /// Equals to `highlight_section(position..position, ..)`.
     pub fn highlight_cursor(self, position: usize, color: Option<Color>) -> Self {
         self.highlight_section_inner(position..position, None, color)
     }
 
-    /// Highlights a cursor position.
+    /// Highlights a cursor adding a colored and underlined dot at its position
+    /// and including a message.
     /// Equals to `highlight_section(position..position, ..)`.
     pub fn highlight_cursor_message(
         self,
@@ -144,12 +145,12 @@ impl<'a> DocumentBlock<'a> {
         self.highlight_section_inner(position..position, Some(message.into()), color)
     }
 
-    /// Highlights a section.
+    /// Highlights a section coloring and underlining the text.
     pub fn highlight_section(self, range: Range<usize>, color: Option<Color>) -> Self {
         self.highlight_section_inner(range, None, color)
     }
 
-    /// Highlights a section with a message.
+    /// Highlights a section coloring and underlining the text and including a message.
     pub fn highlight_section_message(
         self,
         range: Range<usize>,
@@ -690,7 +691,7 @@ impl<'a> HighlightedSection<'a> {
             let content = self.content(&document.content);
 
             buffer.push_str(&color_bold_if(
-                content.replace('\t', " ").replace('\r', " "),
+                content.replace(['\t', '\r'], " "),
                 self.color.unwrap(),
                 in_ansi,
             ));
