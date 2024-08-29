@@ -1,6 +1,6 @@
 use crate::blocks::TextBlock;
 use crate::printer::{Printable, Printer, PrinterFormat};
-use crate::LogContent;
+use crate::{LogContent, LogLevel};
 use std::fmt::Display;
 
 /// Prints any content with a custom indentation.
@@ -65,10 +65,10 @@ impl<'a> PrefixBlock<'a> {
 
 impl<'a> Printable for PrefixBlock<'a> {
     fn print<'b>(&'b self, printer: &mut Printer<'b>) {
-        let mut prefix_printer = Printer::new(printer.format);
+        let mut prefix_printer = printer.derive();
         self.prefix.print(&mut prefix_printer);
 
-        let mut content_printer = Printer::new(printer.format);
+        let mut content_printer = printer.derive();
         self.content.print(&mut content_printer);
 
         content_printer.indent(&prefix_printer, true);
@@ -78,7 +78,7 @@ impl<'a> Printable for PrefixBlock<'a> {
 
 impl<'a> Display for PrefixBlock<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut printer = Printer::new(PrinterFormat::Plain);
+        let mut printer = Printer::new(LogLevel::trace(), PrinterFormat::Plain);
         self.print(&mut printer);
         printer.fmt(f, PrinterFormat::Plain)
     }
@@ -92,7 +92,7 @@ impl<'a> Display for PrefixBlock<'a> {
 mod tests {
     use crate::blocks::{PrefixBlock, TextBlock};
     use crate::printer::{Printable, PrinterFormat};
-    use crate::LogContent;
+    use crate::{LogContent, LogLevel};
     use yansi::Style;
 
     #[test]
@@ -103,7 +103,9 @@ mod tests {
                 "The message\nin\nmultiple\nlines",
                 Style::new().bold().red(),
             )));
-        let text = log.print_to_string(PrinterFormat::Plain).to_string();
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
         assert_eq!(
             text,
@@ -119,7 +121,9 @@ mod tests {
                 "The message\nin\nmultiple\nlines",
                 Style::new().bold().red(),
             )));
-        let text = log.print_to_string(PrinterFormat::Styled).to_string();
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;34m | -> \u{1b}[0m\u{1b}[1;31mThe message\n\u{1b}[0m\u{1b}[1;34m | -> \u{1b}[0m\u{1b}[1;31min\n\u{1b}[0m\u{1b}[1;34m | -> \u{1b}[0m\u{1b}[1;31mmultiple\n\u{1b}[0m\u{1b}[1;34m | -> \u{1b}[0m\u{1b}[1;31mlines\u{1b}[0m");

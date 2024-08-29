@@ -135,18 +135,18 @@ impl<'a> Log<'a> {
 
     /// Returns the log as a plain text.
     pub fn to_plain_text(&self) -> String {
-        self.print_to_string(PrinterFormat::Plain)
+        self.print_to_string(self.level, PrinterFormat::Plain)
     }
 
     /// Returns the log as a styled text.
     pub fn to_styled_text(&self) -> String {
-        self.print_to_string(PrinterFormat::Styled)
+        self.print_to_string(self.level, PrinterFormat::Styled)
     }
 
     /// Returns the log as text. Whether it is styled or plain text
     /// depends on whether the ANSI colors are supported in the executing terminal or not.
     pub fn to_text(&self) -> String {
-        self.print_to_string(PrinterFormat::Default)
+        self.print_to_string(self.level, PrinterFormat::Default)
     }
 
     /// Makes this type owned, i.e. changing the lifetime to `'static`.
@@ -174,7 +174,7 @@ impl<'a> Printable for Log<'a> {
 
 impl<'a> Display for Log<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut printer = Printer::new(PrinterFormat::Plain);
+        let mut printer = Printer::new(self.level, PrinterFormat::Plain);
         self.print(&mut printer);
         printer.fmt(f, PrinterFormat::Plain)
     }

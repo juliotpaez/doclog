@@ -1,4 +1,5 @@
 use crate::printer::{Printable, Printer, PrinterFormat};
+use crate::LogLevel;
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::Display;
@@ -63,7 +64,7 @@ impl<'a> Printable for TextBlock<'a> {
 
 impl<'a> Display for TextBlock<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut printer = Printer::new(PrinterFormat::Plain);
+        let mut printer = Printer::new(LogLevel::trace(), PrinterFormat::Plain);
         self.print(&mut printer);
         printer.fmt(f, PrinterFormat::Plain)
     }
@@ -77,6 +78,7 @@ impl<'a> Display for TextBlock<'a> {
 mod tests {
     use crate::blocks::TextBlock;
     use crate::printer::{Printable, PrinterFormat};
+    use crate::LogLevel;
     use yansi::Style;
 
     #[test]
@@ -85,7 +87,9 @@ mod tests {
             .add_section("This is\na test", Style::new().bold().yellow())
             .add_plain_section("- plain")
             .add_section(" - styled", Style::new().bold().red());
-        let text = log.print_to_string(PrinterFormat::Plain).to_string();
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
         assert_eq!(text, "This is\na test- plain - styled");
     }
@@ -97,7 +101,9 @@ mod tests {
             .add_section("This is\na test", Style::new().bold().yellow())
             .add_plain_section("- plain")
             .add_section(" - styled", Style::new().bold().red());
-        let text = log.print_to_string(PrinterFormat::Styled).to_string();
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
         println!("{}", text);
         assert_eq!(

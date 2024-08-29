@@ -1,5 +1,6 @@
 use crate::blocks::LogBlock;
 use crate::printer::{Printable, Printer, PrinterFormat};
+use crate::LogLevel;
 use smallvec::SmallVec;
 use std::fmt::Display;
 
@@ -59,7 +60,7 @@ impl<'a> Printable for LogContent<'a> {
 
 impl<'a> Display for LogContent<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut printer = Printer::new(PrinterFormat::Plain);
+        let mut printer = Printer::new(LogLevel::trace(), PrinterFormat::Plain);
         self.print(&mut printer);
         printer.fmt(f, PrinterFormat::Plain)
     }

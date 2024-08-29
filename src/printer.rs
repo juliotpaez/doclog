@@ -1,22 +1,25 @@
+use crate::LogLevel;
 use memchr::memchr_iter;
+use std::borrow::Cow;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::io::BufRead;
 use std::iter::once;
 use yansi::Style;
 
 #[derive(Debug, Clone)]
 pub struct Printer<'a> {
+    pub level: LogLevel,
     pub format: PrinterFormat,
-    pub elements: Vec<(&'a str, Style)>,
+    pub elements: Vec<(Cow<'a, str>, Style)>,
 }
 
 impl<'a> Printer<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    /// Creates a new [Printer] for the given format.
-    pub fn new(format: PrinterFormat) -> Self {
+    /// Creates a new [Printer] for the given initial configuration.
+    pub fn new(level: LogLevel, format: PrinterFormat) -> Self {
         Self {
+            level,
             format,
             elements: Vec::new(),
         }
@@ -24,19 +27,28 @@ impl<'a> Printer<'a> {
 
     // METHODS ----------------------------------------------------------------
 
+    /// Derives a new [Printer] from this one.
+    pub fn derive(&self) -> Self {
+        Self {
+            level: self.level,
+            format: self.format,
+            elements: Vec::new(),
+        }
+    }
+
     /// Appends another [Printer] to this one.
     pub fn append(&mut self, other: Printer<'a>) {
         self.elements.extend(other.elements);
     }
 
     /// Pushes a styled string to the printer.
-    pub fn push_plain_str(&mut self, text: &'a str) {
-        self.elements.push((text, Style::new()));
+    pub fn push_plain_str(&mut self, text: impl Into<Cow<'a, str>>) {
+        self.elements.push((text.into(), Style::new()));
     }
 
     /// Pushes a styled string to the printer.
-    pub fn push_styled_str(&mut self, text: &'a str, style: Style) {
-        self.elements.push((text, style));
+    pub fn push_styled_str(&mut self, text: impl Into<Cow<'a, str>>, style: Style) {
+        self.elements.push((text.into(), style));
     }
 
     /// Indents the content of this [Printer] with the content of another [Printer].
@@ -53,7 +65,7 @@ impl<'a> Printer<'a> {
         };
 
         while self_index < self.elements.len() {
-            let (self_content, self_style) = self.elements[self_index];
+            let (self_content, self_style) = &self.elements[self_index];
 
             let mut start_index = 0;
             let mut increase = 0;
@@ -61,10 +73,21 @@ impl<'a> Printer<'a> {
                 .chain(once(self_content.len()))
                 .flat_map(|position| {
                     let is_first = start_index == 0;
-                    let current_line = if position >= self_content.len() {
-                        &self_content[start_index..]
-                    } else {
-                        &self_content[start_index..=position]
+                    let current_line = match self_content {
+                        Cow::Borrowed(self_content) => {
+                            if position >= self_content.len() {
+                                Cow::Borrowed(&self_content[start_index..])
+                            } else {
+                                Cow::Borrowed(&self_content[start_index..=position])
+                            }
+                        }
+                        Cow::Owned(self_content) => {
+                            if position >= self_content.len() {
+                                Cow::Owned(self_content[start_index..].to_string())
+                            } else {
+                                Cow::Owned(self_content[start_index..=position].to_string())
+                            }
+                        }
                     };
                     start_index = position + 1;
 
@@ -75,29 +98,35 @@ impl<'a> Printer<'a> {
                         other.elements.len()
                     })
                         .map(|v| {
-                            let (prefix, style) = other.elements[v];
-                            (prefix, style)
+                            let (prefix, style) = &other.elements[v];
+                            (prefix.clone(), *style)
                         })
                         .chain(
                             once(if current_line.is_empty() {
                                 None
                             } else {
                                 increase += 1;
-                                Some((
-                                    current_line,
-                                    // Optimization to match the style of the indentation when no visual content is present.
-                                    // This way we avoid unnecessary ANSI codes.
-                                    if current_line.chars().all(|c| char::is_ascii_whitespace(&c)) {
-                                        other.elements.last().unwrap().1
-                                    } else {
-                                        self_style
-                                    },
-                                ))
+                                Some({
+                                    let all_whitespace =
+                                        current_line.chars().all(|c| char::is_ascii_whitespace(&c));
+
+                                    (
+                                        current_line,
+                                        // Optimization to match the style of the indentation when no visual content is present.
+                                        // This way we avoid unnecessary ANSI codes.
+                                        if all_whitespace {
+                                            other.elements.last().unwrap().1
+                                        } else {
+                                            *self_style
+                                        },
+                                    )
+                                })
                             })
                             .flatten(),
                         )
                 });
-            self.elements.splice(self_index..self_index + 1, iterator);
+            let v = iterator.collect::<Vec<(Cow<'a, str>, Style)>>();
+            self.elements.splice(self_index..self_index + 1, v);
             self_index += increase;
         }
     }
@@ -169,8 +198,8 @@ pub trait Printable {
     fn print<'a>(&'a self, printer: &mut Printer<'a>);
 
     /// Converts the content of this type to a string.
-    fn print_to_string(&self, format: PrinterFormat) -> String {
-        let mut printer = Printer::new(format);
+    fn print_to_string(&self, level: LogLevel, format: PrinterFormat) -> String {
+        let mut printer = Printer::new(level, format);
         self.print(&mut printer);
         format!("{}", printer)
     }
@@ -186,11 +215,11 @@ mod tests {
 
     #[test]
     fn test_indent_plain() {
-        let mut base = Printer::new(PrinterFormat::Plain);
+        let mut base = Printer::new(LogLevel::error(), PrinterFormat::Plain);
         base.push_styled_str("this\nis\n\na\ntest\n", Style::new().bold().yellow());
         base.push_plain_str("::a\nplain\ntest\n");
 
-        let mut other = Printer::new(PrinterFormat::Styled);
+        let mut other = Printer::new(LogLevel::error(), PrinterFormat::Styled);
         other.push_styled_str("--", Style::new().bold().blue());
         other.push_styled_str(">>", Style::new().bold().green());
 
@@ -207,11 +236,11 @@ mod tests {
 
     #[test]
     fn test_indent_styled() {
-        let mut base = Printer::new(PrinterFormat::Styled);
+        let mut base = Printer::new(LogLevel::error(), PrinterFormat::Styled);
         base.push_styled_str("this\nis\n\na\ntest\n", Style::new().bold().yellow());
         base.push_plain_str("::a\nplain\ntest\n");
 
-        let mut other = Printer::new(PrinterFormat::Styled);
+        let mut other = Printer::new(LogLevel::error(), PrinterFormat::Styled);
         other.push_styled_str("--", Style::new().bold().blue());
         other.push_styled_str(">>", Style::new().bold().green());
 
