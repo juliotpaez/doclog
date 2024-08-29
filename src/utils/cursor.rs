@@ -1,5 +1,5 @@
 /// A specific position in a text.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Cursor {
     pub byte_offset: usize,
     pub char_offset: usize,
@@ -10,6 +10,7 @@ pub struct Cursor {
 impl Cursor {
     // CONSTRUCTORS -----------------------------------------------------------
 
+    /// Builds the [Cursor] from a byte offset.
     pub fn from_byte_offset(text: &str, byte_offset: usize) -> Cursor {
         let prev_text = &text[..byte_offset];
         let start_line_offset = match memchr::memrchr(b'\n', prev_text.as_bytes()) {

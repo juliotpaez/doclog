@@ -1,5 +1,3 @@
-use yansi::{Color, Style};
-
 /// Indents `text` prefixing each line with `indent`.
 /// If `indent_first` is `true`, the first line is also prefixed.
 pub fn indent_text(text: &str, indent: &str, indent_first: bool) -> String {
@@ -13,6 +11,7 @@ pub fn indent_text(text: &str, indent: &str, indent_first: bool) -> String {
         if indent_first || i > 0 {
             buffer.push_str(indent);
         }
+
         buffer.push_str(line);
     }
 
@@ -33,19 +32,10 @@ pub fn remove_jump_lines(text: &str) -> String {
     buffer
 }
 
-/// Formats a text only if `condition` is `true`.
-pub fn color_bold_if(text: String, color: Color, condition: bool) -> String {
-    if condition {
-        Style::new(color).bold().paint(text).to_string()
-    } else {
-        text
-    }
-}
-
 /// Removes the ANSI escaping characters.
 pub fn remove_ansi_escapes(text: &str) -> String {
-    let plain_bytes = strip_ansi_escapes::strip(text).unwrap();
-    String::from_utf8(plain_bytes).unwrap()
+    let plain_bytes = strip_ansi_escapes::strip(text);
+    unsafe { String::from_utf8_unchecked(plain_bytes) }
 }
 
 // ----------------------------------------------------------------------------

@@ -2,77 +2,85 @@ use std::cmp::Ordering;
 
 use yansi::Color;
 
-/// The trace log level. Level = 1000.
-pub static TRACE: LogLevel = LogLevel::new(1000, "trace", Color::Fixed(102));
+/// The trace log level. Level = 10.
+const TRACE: LogLevel = LogLevel::new(10, "trace", Color::Fixed(102));
 
-/// The debug log level. Level = 2000.
-pub static DEBUG: LogLevel = LogLevel::new(2000, "debug", Color::Green);
+/// The debug log level. Level = 20.
+const DEBUG: LogLevel = LogLevel::new(20, "debug", Color::Green);
 
-/// The info log level. Level = 3000.
-pub static INFO: LogLevel = LogLevel::new(3000, "info", Color::Blue);
+/// The info log level. Level = 30.
+const INFO: LogLevel = LogLevel::new(30, "info", Color::Blue);
 
-/// The warn log level. Level = 4000.
-pub static WARN: LogLevel = LogLevel::new(4000, "warn", Color::Yellow);
+/// The warn log level. Level = 40.
+const WARN: LogLevel = LogLevel::new(40, "warn", Color::Yellow);
 
-/// The error log level. Level = 5000.
-pub static ERROR: LogLevel = LogLevel::new(5000, "error", Color::Red);
+/// The error log level. Level = 50.
+const ERROR: LogLevel = LogLevel::new(50, "error", Color::Red);
 
 /// The different levels of logging.
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct LogLevel {
-    level: usize,
-    tag: &'static str,
+    level: u8,
     color: Color,
+    tag: &'static str,
 }
 
 impl LogLevel {
     // CONSTRUCTORS -----------------------------------------------------------
 
     /// Builds a new log level.
-    pub const fn new(level: usize, tag: &'static str, color: Color) -> LogLevel {
+    pub const fn new(level: u8, tag: &'static str, color: Color) -> LogLevel {
         LogLevel { level, tag, color }
     }
 
     // GETTERS ----------------------------------------------------------------
 
-    pub fn level(&self) -> usize {
+    /// Returns a number that defines an order between log levels.
+    pub fn level(&self) -> u8 {
         self.level
     }
 
+    /// Returns the tag that represents the log level.
     pub fn tag(&self) -> &'static str {
         self.tag
     }
 
+    /// Returns the color that represents the log level.
     pub fn color(&self) -> Color {
         self.color
     }
 
     // STATIC METHODS ---------------------------------------------------------
 
-    pub fn trace() -> LogLevel {
-        TRACE.clone()
+    /// Returns the TRACE log level.
+    pub const fn trace() -> LogLevel {
+        TRACE
     }
 
-    pub fn debug() -> LogLevel {
-        DEBUG.clone()
+    /// Returns the DEBUG log level.
+    pub const fn debug() -> LogLevel {
+        DEBUG
     }
 
-    pub fn info() -> LogLevel {
-        INFO.clone()
+    /// Returns the INFO log level.
+    pub const fn info() -> LogLevel {
+        INFO
     }
 
-    pub fn warn() -> LogLevel {
-        WARN.clone()
+    /// Returns the WARN log level.
+    pub const fn warn() -> LogLevel {
+        WARN
     }
 
-    pub fn error() -> LogLevel {
-        ERROR.clone()
+    /// Returns the ERROR log level.
+    pub const fn error() -> LogLevel {
+        ERROR
     }
 }
 
 impl PartialOrd for LogLevel {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.level.partial_cmp(&other.level)
+        Some(self.cmp(other))
     }
 }
 

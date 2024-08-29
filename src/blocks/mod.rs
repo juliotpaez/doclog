@@ -1,79 +1,63 @@
-pub use document::*;
-pub use document::*;
-pub use indent::*;
-pub use note::*;
-pub use plain_text::*;
-pub use separator::*;
-pub use stack::*;
-pub use stack_trace::*;
-pub use tag::*;
-pub use title::*;
+// pub use document::*;
+pub use prefix::*;
+// pub use note::*;
+// pub use separator::*;
+// pub use stack::*;
+// pub use stack_trace::*;
+// pub use tag::*;
+use crate::printer::{Printable, Printer};
+pub use text::*;
+// pub use title::*;
 
-use crate::Log;
+// mod document;
+mod prefix;
+// mod note;
+// mod separator;
+// mod stack;
+// mod stack_trace;
+// mod tag;
+mod text;
+// mod title;
 
-mod document;
-mod indent;
-mod note;
-mod plain_text;
-mod separator;
-mod stack;
-mod stack_trace;
-mod tag;
-mod title;
-
-/// One block that belongs to a log.
+/// A block log.
 #[derive(Debug, Clone)]
 pub enum LogBlock<'a> {
-    Title(TitleBlock<'a>),
-    PlainText(PlainTextBlock<'a>),
-    Document(DocumentBlock<'a>),
-    Separator(SeparatorBlock),
-    Indent(IndentBlock<'a>),
-    Stack(StackBlock<'a>),
-    Tag(TagBlock<'a>),
-    Note(NoteBlock<'a>),
+    // Basic blocks.
+    Text(TextBlock<'a>),
+    Prefix(PrefixBlock<'a>),
+    // TODO
+    // Custom blocks.
+    // Title(TitleBlock<'a>),
+    // Document(DocumentBlock<'a>),
+    // Separator(SeparatorBlock),
+    // Stack(StackBlock<'a>),
+    // Tag(TagBlock<'a>),
+    // Note(NoteBlock<'a>),
 }
 
 impl<'a> LogBlock<'a> {
-    pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
+    // METHODS ----------------------------------------------------------------
+
+    /// Makes this type owned, i.e. changing the lifetime to `'static`.
+    pub fn make_owned(self) -> LogBlock<'static> {
         match self {
-            LogBlock::Title(block) => {
-                block.to_text(log, in_ansi, buffer);
-            }
-            LogBlock::PlainText(block) => {
-                block.to_text(buffer);
-            }
-            LogBlock::Document(block) => {
-                block.to_text(log, in_ansi, buffer);
-            }
-            LogBlock::Separator(block) => {
-                block.to_text(log, in_ansi, buffer);
-            }
-            LogBlock::Indent(block) => {
-                block.to_text(in_ansi, buffer);
-            }
-            LogBlock::Stack(block) => {
-                block.to_text(log, in_ansi, buffer);
-            }
-            LogBlock::Tag(block) => {
-                block.to_text(log, in_ansi, buffer);
-            }
-            LogBlock::Note(block) => {
-                block.to_text(log, in_ansi, buffer);
-            }
+            LogBlock::Text(v) => LogBlock::Text(v.make_owned()),
+            LogBlock::Prefix(v) => LogBlock::Prefix(v.make_owned()),
         }
     }
+}
 
-    pub fn make_owned<'b>(&self) -> LogBlock<'b> {
+impl<'a> From<TextBlock<'a>> for LogBlock<'a> {
+    fn from(block: TextBlock<'a>) -> Self {
+        LogBlock::Text(block)
+    }
+}
+
+impl<'a> Printable for LogBlock<'a> {
+    fn print<'b>(&'b self, printer: &mut Printer<'b>) {
         match self {
-            LogBlock::Title(v) => LogBlock::Title(v.make_owned()),
-            LogBlock::PlainText(v) => LogBlock::PlainText(v.make_owned()),
-            LogBlock::Document(v) => LogBlock::Document(v.make_owned()),
-            LogBlock::Separator(v) => LogBlock::Separator(v.clone()),
-            LogBlock::Indent(v) => LogBlock::Indent(v.make_owned()),
-            LogBlock::Stack(v) => LogBlock::Stack(v.make_owned()),
-            LogBlock::Tag(v) => LogBlock::Tag(v.make_owned()),
-            LogBlock::Note(v) => LogBlock::Note(v.make_owned()),
+            LogBlock::Text(v) => v.print(printer),
+            LogBlock::Prefix(v) => v.print(printer),
         }
     }
 }
