@@ -24,12 +24,12 @@ impl<'a> TextBlock<'a> {
     // GETTERS ----------------------------------------------------------------
 
     /// Returns the sections of the text block.
-    pub fn sections(&self) -> &[PaintedElement<'a>] {
+    pub fn get_sections(&self) -> &[PaintedElement<'a>] {
         &self.sections
     }
 
     /// Returns a mutable reference to the sections of the text block.
-    pub fn sections_mut(&mut self) -> &mut SmallVec<[PaintedElement<'a>; 3]> {
+    pub fn get_sections_mut(&mut self) -> &mut SmallVec<[PaintedElement<'a>; 3]> {
         &mut self.sections
     }
 

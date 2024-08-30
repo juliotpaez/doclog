@@ -18,18 +18,9 @@ pub fn indent_text(text: &str, indent: &str, indent_first: bool) -> String {
     buffer
 }
 
-/// Removes the jump lines of `text`.
+/// Removes the jump lines of `text`, changing them to spaces.
 pub fn remove_jump_lines(text: &str) -> String {
-    let mut buffer = String::with_capacity(text.len());
-
-    for (i, line) in text.lines().enumerate() {
-        if i != 0 {
-            buffer.push(' ');
-        }
-        buffer.push_str(line);
-    }
-
-    buffer
+    text.replace('\n', " ")
 }
 
 /// Removes the ANSI escaping characters.

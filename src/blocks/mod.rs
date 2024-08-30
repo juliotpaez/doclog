@@ -2,12 +2,12 @@
 // pub use stack_trace::*;
 // pub use tag::*;
 use crate::printer::{Printable, Printer};
+// pub use note::*;
+pub use header::*;
 // pub use document::*;
 pub use prefix::*;
-// pub use note::*;
 pub use separator::*;
 pub use text::*;
-// pub use title::*;
 
 // mod document;
 mod prefix;
@@ -16,8 +16,8 @@ mod separator;
 // mod stack;
 // mod stack_trace;
 // mod tag;
+mod header;
 mod text;
-// mod title;
 
 /// A block log.
 #[derive(Debug, Clone)]
@@ -25,10 +25,11 @@ pub enum LogBlock<'a> {
     // Basic blocks.
     Text(TextBlock<'a>),
     Prefix(PrefixBlock<'a>),
+
     // TODO
     // Custom blocks.
     Separator(SeparatorBlock),
-    // Title(TitleBlock<'a>),
+    Header(HeaderBlock<'a>),
     // Document(DocumentBlock<'a>),
     // Stack(StackBlock<'a>),
     // Tag(TagBlock<'a>),
@@ -41,9 +42,13 @@ impl<'a> LogBlock<'a> {
     /// Makes this type owned, i.e. changing the lifetime to `'static`.
     pub fn make_owned(self) -> LogBlock<'static> {
         match self {
+            // Basic blocks.
             LogBlock::Text(v) => LogBlock::Text(v.make_owned()),
             LogBlock::Prefix(v) => LogBlock::Prefix(v.make_owned()),
+
+            // Custom blocks.
             LogBlock::Separator(v) => LogBlock::Separator(v),
+            LogBlock::Header(v) => LogBlock::Header(v.make_owned()),
         }
     }
 }
@@ -57,9 +62,13 @@ impl<'a> From<TextBlock<'a>> for LogBlock<'a> {
 impl<'a> Printable for LogBlock<'a> {
     fn print<'b>(&'b self, printer: &mut Printer<'b>) {
         match self {
+            // Basic blocks.
             LogBlock::Text(v) => v.print(printer),
             LogBlock::Prefix(v) => v.print(printer),
+
+            // Custom blocks.
             LogBlock::Separator(v) => v.print(printer),
+            LogBlock::Header(v) => v.print(printer),
         }
     }
 }

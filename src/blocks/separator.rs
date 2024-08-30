@@ -30,25 +30,25 @@ impl SeparatorBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The width of the separator.
-    pub fn width(&self) -> usize {
+    pub fn get_width(&self) -> usize {
         self.width
     }
 
     /// The character used to repeat the separator.
-    pub fn character(&self) -> char {
+    pub fn get_character(&self) -> char {
         self.character
     }
 
     // SETTERS ----------------------------------------------------------------
 
     /// Sets the width of the separator.
-    pub fn set_width(mut self, width: usize) -> Self {
+    pub fn width(mut self, width: usize) -> Self {
         self.width = width;
         self
     }
 
     /// Sets the character used to repeat the separator.
-    pub fn set_character(mut self, character: char) -> Self {
+    pub fn character(mut self, character: char) -> Self {
         self.character = character;
         self
     }

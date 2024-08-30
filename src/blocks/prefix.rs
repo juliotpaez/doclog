@@ -20,41 +20,42 @@ impl<'a> PrefixBlock<'a> {
     // GETTERS ----------------------------------------------------------------
 
     /// Returns the prefix.
-    pub fn prefix(&self) -> &TextBlock<'a> {
+    pub fn get_prefix(&self) -> &TextBlock<'a> {
         &self.prefix
     }
 
     /// Returns a mutable reference to the prefix.
-    pub fn prefix_mut(&mut self) -> &mut TextBlock<'a> {
+    pub fn get_prefix_mut(&mut self) -> &mut TextBlock<'a> {
         &mut self.prefix
     }
 
     /// Returns the inner content.
-    pub fn content(&self) -> &LogContent<'a> {
+    pub fn get_content(&self) -> &LogContent<'a> {
         &self.content
     }
 
     /// Returns a mutable reference to the inner content.
-    pub fn content_mut(&mut self) -> &mut LogContent<'a> {
+    pub fn get_content_mut(&mut self) -> &mut LogContent<'a> {
         &mut self.content
     }
 
     // SETTERS ----------------------------------------------------------------
 
     /// Sets the prefix.
-    pub fn set_prefix(mut self, prefix: TextBlock<'a>) -> Self {
+    pub fn prefix(mut self, prefix: TextBlock<'a>) -> Self {
         self.prefix = prefix;
         self
     }
 
     /// Sets the inner content.
-    pub fn set_content(mut self, content: LogContent<'a>) -> Self {
+    pub fn content(mut self, content: LogContent<'a>) -> Self {
         self.content = Box::new(content);
         self
     }
 
     // METHODS ----------------------------------------------------------------
 
+    /// Makes this type owned, i.e. changing the lifetime to `'static`.
     pub fn make_owned(self) -> PrefixBlock<'static> {
         PrefixBlock {
             prefix: self.prefix.make_owned(),
@@ -98,8 +99,8 @@ mod tests {
     #[test]
     fn test_plain() {
         let log = PrefixBlock::new()
-            .set_prefix(TextBlock::new().add_styled_text(" | -> ", Style::new().bold().blue()))
-            .set_content(
+            .prefix(TextBlock::new().add_styled_text(" | -> ", Style::new().bold().blue()))
+            .content(
                 LogContent::new().add_block(TextBlock::new().add_styled_text(
                     "The message\nin\nmultiple\nlines",
                     Style::new().bold().red(),
@@ -118,8 +119,8 @@ mod tests {
     #[test]
     fn test_styled() {
         let log = PrefixBlock::new()
-            .set_prefix(TextBlock::new().add_styled_text(" | -> ", Style::new().bold().blue()))
-            .set_content(
+            .prefix(TextBlock::new().add_styled_text(" | -> ", Style::new().bold().blue()))
+            .content(
                 LogContent::new().add_block(TextBlock::new().add_styled_text(
                     "The message\nin\nmultiple\nlines",
                     Style::new().bold().red(),
