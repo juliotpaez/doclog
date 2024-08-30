@@ -61,7 +61,7 @@ impl Printable for SeparatorBlock {
         }
 
         let separator = format!("{}", self.character).repeat(self.width);
-        printer.push_styled_str(separator, Style::new().bold().fg(printer.level.color()));
+        printer.push_styled_text(separator, Style::new().bold().fg(printer.level.color()));
     }
 }
 

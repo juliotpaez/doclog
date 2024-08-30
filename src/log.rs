@@ -166,7 +166,7 @@ impl<'a> Printable for Log<'a> {
 
         // Print cause.
         if let Some(cause) = &self.cause {
-            printer.push_plain_str("\n");
+            printer.push_plain_text("\n");
             cause.print(printer);
         }
     }

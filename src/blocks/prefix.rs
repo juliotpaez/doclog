@@ -98,11 +98,13 @@ mod tests {
     #[test]
     fn test_plain() {
         let log = PrefixBlock::new()
-            .set_prefix(TextBlock::new().add_section(" | -> ", Style::new().bold().blue()))
-            .set_content(LogContent::new().add_block(TextBlock::new().add_section(
-                "The message\nin\nmultiple\nlines",
-                Style::new().bold().red(),
-            )));
+            .set_prefix(TextBlock::new().add_styled_text(" | -> ", Style::new().bold().blue()))
+            .set_content(
+                LogContent::new().add_block(TextBlock::new().add_styled_text(
+                    "The message\nin\nmultiple\nlines",
+                    Style::new().bold().red(),
+                )),
+            );
         let text = log
             .print_to_string(LogLevel::error(), PrinterFormat::Plain)
             .to_string();
@@ -116,11 +118,13 @@ mod tests {
     #[test]
     fn test_styled() {
         let log = PrefixBlock::new()
-            .set_prefix(TextBlock::new().add_section(" | -> ", Style::new().bold().blue()))
-            .set_content(LogContent::new().add_block(TextBlock::new().add_section(
-                "The message\nin\nmultiple\nlines",
-                Style::new().bold().red(),
-            )));
+            .set_prefix(TextBlock::new().add_styled_text(" | -> ", Style::new().bold().blue()))
+            .set_content(
+                LogContent::new().add_block(TextBlock::new().add_styled_text(
+                    "The message\nin\nmultiple\nlines",
+                    Style::new().bold().red(),
+                )),
+            );
         let text = log
             .print_to_string(LogLevel::error(), PrinterFormat::Styled)
             .to_string();

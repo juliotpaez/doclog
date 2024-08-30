@@ -3,19 +3,19 @@ use std::cmp::Ordering;
 use yansi::Color;
 
 /// The trace log level. Level = 10.
-const TRACE: LogLevel = LogLevel::new(10, "trace", Color::Fixed(102));
+const TRACE: LogLevel = LogLevel::new(10, Color::Fixed(102), "trace", '•');
 
 /// The debug log level. Level = 20.
-const DEBUG: LogLevel = LogLevel::new(20, "debug", Color::Green);
+const DEBUG: LogLevel = LogLevel::new(20, Color::Green, "debug", '•');
 
 /// The info log level. Level = 30.
-const INFO: LogLevel = LogLevel::new(30, "info", Color::Blue);
+const INFO: LogLevel = LogLevel::new(30, Color::Blue, "info", 'ℹ');
 
 /// The warn log level. Level = 40.
-const WARN: LogLevel = LogLevel::new(40, "warn", Color::Yellow);
+const WARN: LogLevel = LogLevel::new(40, Color::Yellow, "warn", '⚠');
 
 /// The error log level. Level = 50.
-const ERROR: LogLevel = LogLevel::new(50, "error", Color::Red);
+const ERROR: LogLevel = LogLevel::new(50, Color::Red, "error", '×');
 
 /// The different levels of logging.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -23,14 +23,20 @@ pub struct LogLevel {
     level: u8,
     color: Color,
     tag: &'static str,
+    symbol: char,
 }
 
 impl LogLevel {
     // CONSTRUCTORS -----------------------------------------------------------
 
     /// Builds a new log level.
-    pub const fn new(level: u8, tag: &'static str, color: Color) -> LogLevel {
-        LogLevel { level, tag, color }
+    pub const fn new(level: u8, color: Color, tag: &'static str, symbol: char) -> LogLevel {
+        LogLevel {
+            level,
+            tag,
+            color,
+            symbol,
+        }
     }
 
     // GETTERS ----------------------------------------------------------------
@@ -48,6 +54,11 @@ impl LogLevel {
     /// Returns the color that represents the log level.
     pub fn color(&self) -> Color {
         self.color
+    }
+
+    /// Returns the symbol that represents the log level.
+    pub fn symbol(&self) -> char {
+        self.symbol
     }
 
     // STATIC METHODS ---------------------------------------------------------

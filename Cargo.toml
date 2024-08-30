@@ -11,10 +11,6 @@ categories = ["development-tools::debugging"]
 license = "MIT"
 edition = "2021"
 
-[features]
-default = []
-ascii-chars = []
-
 [dependencies]
 bytecount = "0.6.8"
 chrono = "0.4.38"

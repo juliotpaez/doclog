@@ -10,7 +10,13 @@ use yansi::Style;
 pub struct Printer<'a> {
     pub level: LogLevel,
     pub format: PrinterFormat,
-    pub elements: Vec<(Cow<'a, str>, Style)>,
+    pub elements: Vec<PaintedElement<'a>>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct PaintedElement<'a> {
+    pub text: Cow<'a, str>,
+    pub style: Style,
 }
 
 impl<'a> Printer<'a> {
@@ -41,14 +47,25 @@ impl<'a> Printer<'a> {
         self.elements.extend(other.elements);
     }
 
-    /// Pushes a styled string to the printer.
-    pub fn push_plain_str(&mut self, text: impl Into<Cow<'a, str>>) {
-        self.elements.push((text.into(), Style::new()));
+    /// Pushes a painted element to the printer.
+    pub fn push_painted_element(&mut self, element: PaintedElement<'a>) {
+        self.elements.push(element);
     }
 
     /// Pushes a styled string to the printer.
-    pub fn push_styled_str(&mut self, text: impl Into<Cow<'a, str>>, style: Style) {
-        self.elements.push((text.into(), style));
+    pub fn push_plain_text(&mut self, text: impl Into<Cow<'a, str>>) {
+        self.push_painted_element(PaintedElement {
+            text: text.into(),
+            style: Style::new(),
+        });
+    }
+
+    /// Pushes a styled string to the printer.
+    pub fn push_styled_text(&mut self, text: impl Into<Cow<'a, str>>, style: Style) {
+        self.push_painted_element(PaintedElement {
+            text: text.into(),
+            style,
+        });
     }
 
     /// Indents the content of this [Printer] with the content of another [Printer].
@@ -65,15 +82,18 @@ impl<'a> Printer<'a> {
         };
 
         while self_index < self.elements.len() {
-            let (self_content, self_style) = &self.elements[self_index];
+            let PaintedElement {
+                text: self_text,
+                style: self_style,
+            } = &self.elements[self_index];
 
             let mut start_index = 0;
             let mut increase = 0;
-            let iterator = memchr_iter(b'\n', self_content.as_bytes())
-                .chain(once(self_content.len()))
+            let iterator = memchr_iter(b'\n', self_text.as_bytes())
+                .chain(once(self_text.len()))
                 .flat_map(|position| {
                     let is_first = start_index == 0;
-                    let current_line = match self_content {
+                    let current_line = match self_text {
                         Cow::Borrowed(self_content) => {
                             if position >= self_content.len() {
                                 Cow::Borrowed(&self_content[start_index..])
@@ -97,10 +117,7 @@ impl<'a> Printer<'a> {
                         increase += other.elements.len();
                         other.elements.len()
                     })
-                        .map(|v| {
-                            let (prefix, style) = &other.elements[v];
-                            (prefix.clone(), *style)
-                        })
+                        .map(|v| other.elements[v].clone())
                         .chain(
                             once(if current_line.is_empty() {
                                 None
@@ -110,22 +127,22 @@ impl<'a> Printer<'a> {
                                     let all_whitespace =
                                         current_line.chars().all(|c| char::is_ascii_whitespace(&c));
 
-                                    (
-                                        current_line,
+                                    PaintedElement {
+                                        text: current_line,
                                         // Optimization to match the style of the indentation when no visual content is present.
                                         // This way we avoid unnecessary ANSI codes.
-                                        if all_whitespace {
-                                            other.elements.last().unwrap().1
+                                        style: if all_whitespace {
+                                            other.elements.last().unwrap().style
                                         } else {
                                             *self_style
                                         },
-                                    )
+                                    }
                                 })
                             })
                             .flatten(),
                         )
                 });
-            let v = iterator.collect::<Vec<(Cow<'a, str>, Style)>>();
+            let v = iterator.collect::<Vec<_>>();
             self.elements.splice(self_index..self_index + 1, v);
             self_index += increase;
         }
@@ -135,26 +152,27 @@ impl<'a> Printer<'a> {
     pub fn fmt(&self, fmt: &mut Formatter<'_>, format: PrinterFormat) -> fmt::Result {
         match format {
             PrinterFormat::Plain => {
-                for (text, _) in &self.elements {
-                    write!(fmt, "{}", text)?;
+                for painted in &self.elements {
+                    write!(fmt, "{}", painted.text)?;
                 }
             }
             PrinterFormat::Default | PrinterFormat::Styled => {
                 let mut prev_style: Option<&Style> = None;
 
-                for (text, style) in &self.elements {
+                for painted in &self.elements {
                     // Print previos suffix and current prefix only if the style is different.
                     if let Some(prev_style) = prev_style.take() {
-                        if prev_style != style {
+                        if prev_style != &painted.style {
                             prev_style.fmt_suffix(fmt)?;
-                            style.fmt_prefix(fmt)?;
+                            painted.style.fmt_prefix(fmt)?;
                         }
                     } else {
-                        style.fmt_prefix(fmt)?;
+                        painted.style.fmt_prefix(fmt)?;
                     }
 
-                    write!(fmt, "{}", text)?;
-                    prev_style = Some(style);
+                    write!(fmt, "{}", painted.text)?;
+
+                    prev_style = Some(&painted.style);
                 }
 
                 if let Some(prev_style) = prev_style.take() {
@@ -216,12 +234,12 @@ mod tests {
     #[test]
     fn test_indent_plain() {
         let mut base = Printer::new(LogLevel::error(), PrinterFormat::Plain);
-        base.push_styled_str("this\nis\n\na\ntest\n", Style::new().bold().yellow());
-        base.push_plain_str("::a\nplain\ntest\n");
+        base.push_styled_text("this\nis\n\na\ntest\n", Style::new().bold().yellow());
+        base.push_plain_text("::a\nplain\ntest\n");
 
         let mut other = Printer::new(LogLevel::error(), PrinterFormat::Styled);
-        other.push_styled_str("--", Style::new().bold().blue());
-        other.push_styled_str(">>", Style::new().bold().green());
+        other.push_styled_text("--", Style::new().bold().blue());
+        other.push_styled_text(">>", Style::new().bold().green());
 
         // Generate result.
         base.indent(&other, true);
@@ -237,12 +255,12 @@ mod tests {
     #[test]
     fn test_indent_styled() {
         let mut base = Printer::new(LogLevel::error(), PrinterFormat::Styled);
-        base.push_styled_str("this\nis\n\na\ntest\n", Style::new().bold().yellow());
-        base.push_plain_str("::a\nplain\ntest\n");
+        base.push_styled_text("this\nis\n\na\ntest\n", Style::new().bold().yellow());
+        base.push_plain_text("::a\nplain\ntest\n");
 
         let mut other = Printer::new(LogLevel::error(), PrinterFormat::Styled);
-        other.push_styled_str("--", Style::new().bold().blue());
-        other.push_styled_str(">>", Style::new().bold().green());
+        other.push_styled_text("--", Style::new().bold().blue());
+        other.push_styled_text(">>", Style::new().bold().green());
 
         // Generate result.
         base.indent(&other, true);

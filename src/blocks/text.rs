@@ -5,10 +5,12 @@ use std::borrow::Cow;
 use std::fmt::Display;
 use yansi::Style;
 
+pub use crate::printer::PaintedElement;
+
 /// A block that prints a formated text to the terminal.
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct TextBlock<'a> {
-    sections: SmallVec<[(Cow<'a, str>, Style); 3]>,
+    sections: SmallVec<[PaintedElement<'a>; 3]>,
 }
 
 impl<'a> TextBlock<'a> {
@@ -22,24 +24,27 @@ impl<'a> TextBlock<'a> {
     // GETTERS ----------------------------------------------------------------
 
     /// Returns the sections of the text block.
-    pub fn sections(&self) -> &[(Cow<'a, str>, Style)] {
+    pub fn sections(&self) -> &[PaintedElement<'a>] {
         &self.sections
     }
 
     /// Returns a mutable reference to the sections of the text block.
-    pub fn sections_mut(&mut self) -> &mut SmallVec<[(Cow<'a, str>, Style); 3]> {
+    pub fn sections_mut(&mut self) -> &mut SmallVec<[PaintedElement<'a>; 3]> {
         &mut self.sections
     }
 
     // METHODS ----------------------------------------------------------------
 
-    pub fn add_section(mut self, text: impl Into<Cow<'a, str>>, style: Style) -> Self {
-        self.sections.push((text.into(), style));
-        self
+    pub fn add_plain_text(self, text: impl Into<Cow<'a, str>>) -> Self {
+        self.add_styled_text(text, Style::new())
     }
 
-    pub fn add_plain_section(self, text: impl Into<Cow<'a, str>>) -> Self {
-        self.add_section(text, Style::new())
+    pub fn add_styled_text(mut self, text: impl Into<Cow<'a, str>>, style: Style) -> Self {
+        self.sections.push(PaintedElement {
+            text: text.into(),
+            style,
+        });
+        self
     }
 
     /// Makes this type owned, i.e. changing the lifetime to `'static`.
@@ -48,7 +53,10 @@ impl<'a> TextBlock<'a> {
             sections: self
                 .sections
                 .into_iter()
-                .map(|(text, style)| (Cow::Owned(text.into_owned()), style))
+                .map(|painted| PaintedElement {
+                    text: painted.text.into_owned().into(),
+                    style: painted.style,
+                })
                 .collect(),
         }
     }
@@ -56,8 +64,8 @@ impl<'a> TextBlock<'a> {
 
 impl<'a> Printable for TextBlock<'a> {
     fn print<'b>(&'b self, printer: &mut Printer<'b>) {
-        for (text, style) in &self.sections {
-            printer.push_styled_str(text.as_ref(), *style);
+        for painted in &self.sections {
+            printer.push_painted_element(painted.clone());
         }
     }
 }
@@ -84,9 +92,9 @@ mod tests {
     #[test]
     fn test_plain() {
         let log = TextBlock::new()
-            .add_section("This is\na test", Style::new().bold().yellow())
-            .add_plain_section("- plain")
-            .add_section(" - styled", Style::new().bold().red());
+            .add_styled_text("This is\na test", Style::new().bold().yellow())
+            .add_plain_text("- plain")
+            .add_styled_text(" - styled", Style::new().bold().red());
         let text = log
             .print_to_string(LogLevel::error(), PrinterFormat::Plain)
             .to_string();
@@ -98,9 +106,9 @@ mod tests {
     fn test_styled() {
         yansi::disable();
         let log = TextBlock::new()
-            .add_section("This is\na test", Style::new().bold().yellow())
-            .add_plain_section("- plain")
-            .add_section(" - styled", Style::new().bold().red());
+            .add_styled_text("This is\na test", Style::new().bold().yellow())
+            .add_plain_text("- plain")
+            .add_styled_text(" - styled", Style::new().bold().red());
         let text = log
             .print_to_string(LogLevel::error(), PrinterFormat::Styled)
             .to_string();

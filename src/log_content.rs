@@ -50,7 +50,7 @@ impl<'a> Printable for LogContent<'a> {
     fn print<'b>(&'b self, printer: &mut Printer<'b>) {
         for (i, block) in self.blocks.iter().enumerate() {
             if i > 0 {
-                printer.push_plain_str("\n");
+                printer.push_plain_text("\n");
             }
 
             block.print(printer);
