@@ -42,8 +42,8 @@ impl<'a> NoteBlock<'a> {
 
     /// Sets the text.
     #[inline(always)]
-    pub fn text(mut self, text: TextBlock<'a>) -> Self {
-        self.text = text;
+    pub fn text(mut self, text: impl Into<TextBlock<'a>>) -> Self {
+        self.text = text.into();
         self
     }
 

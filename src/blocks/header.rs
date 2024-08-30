@@ -79,8 +79,8 @@ impl<'a> HeaderBlock<'a> {
 
     /// Sets the location.
     #[inline(always)]
-    pub fn location(mut self, location: TextBlock<'a>) -> Self {
-        self.location = location;
+    pub fn location(mut self, location: impl Into<TextBlock<'a>>) -> Self {
+        self.location = location.into();
         self
     }
 

@@ -59,20 +59,20 @@ impl<'a> StackTraceBlock<'a> {
     // SETTERS ----------------------------------------------------------------
 
     /// Sets the file location.
-    pub fn file_location(mut self, file_location: TextBlock<'a>) -> Self {
-        self.file_location = file_location;
+    pub fn file_location(mut self, file_location: impl Into<TextBlock<'a>>) -> Self {
+        self.file_location = file_location.into();
         self
     }
 
     /// Sets the inner code path.
-    pub fn code_path(mut self, code_path: TextBlock<'a>) -> Self {
-        self.code_path = code_path;
+    pub fn code_path(mut self, code_path: impl Into<TextBlock<'a>>) -> Self {
+        self.code_path = code_path.into();
         self
     }
 
     /// Sets the message.
-    pub fn message(mut self, message: TextBlock<'a>) -> Self {
-        self.message = message;
+    pub fn message(mut self, message: impl Into<TextBlock<'a>>) -> Self {
+        self.message = message.into();
         self
     }
 
