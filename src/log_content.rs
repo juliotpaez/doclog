@@ -46,8 +46,11 @@ impl<'a> LogContent<'a> {
     }
 }
 
-impl<'a> Printable for LogContent<'a> {
-    fn print<'b>(&'b self, printer: &mut Printer<'b>) {
+impl<'a> Printable<'a> for LogContent<'a> {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
         for (i, block) in self.blocks.iter().enumerate() {
             if i > 0 {
                 printer.push_plain_text("\n");

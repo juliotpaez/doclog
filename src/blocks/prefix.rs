@@ -3,7 +3,10 @@ use crate::printer::{Printable, Printer, PrinterFormat};
 use crate::{LogContent, LogLevel};
 use std::fmt::Display;
 
-/// Prints any content with a custom indentation.
+/// Prints any content prefixed with a text block.
+///
+/// When printed, prefix will get all newline characters `\n`
+/// replaced by whitespaces to only occupy one line.
 #[derive(Default, Debug, Clone)]
 pub struct PrefixBlock<'a> {
     prefix: TextBlock<'a>,
@@ -13,6 +16,8 @@ pub struct PrefixBlock<'a> {
 impl<'a> PrefixBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
+    /// Creates a new empty [PrefixBlock].
+    #[inline(always)]
     pub fn new() -> Self {
         Self::default()
     }
@@ -20,21 +25,25 @@ impl<'a> PrefixBlock<'a> {
     // GETTERS ----------------------------------------------------------------
 
     /// Returns the prefix.
+    #[inline(always)]
     pub fn get_prefix(&self) -> &TextBlock<'a> {
         &self.prefix
     }
 
     /// Returns a mutable reference to the prefix.
+    #[inline(always)]
     pub fn get_prefix_mut(&mut self) -> &mut TextBlock<'a> {
         &mut self.prefix
     }
 
     /// Returns the inner content.
+    #[inline(always)]
     pub fn get_content(&self) -> &LogContent<'a> {
         &self.content
     }
 
     /// Returns a mutable reference to the inner content.
+    #[inline(always)]
     pub fn get_content_mut(&mut self) -> &mut LogContent<'a> {
         &mut self.content
     }
@@ -42,12 +51,14 @@ impl<'a> PrefixBlock<'a> {
     // SETTERS ----------------------------------------------------------------
 
     /// Sets the prefix.
-    pub fn prefix(mut self, prefix: TextBlock<'a>) -> Self {
-        self.prefix = prefix;
+    #[inline(always)]
+    pub fn prefix(mut self, prefix: impl Into<TextBlock<'a>>) -> Self {
+        self.prefix = prefix.into();
         self
     }
 
     /// Sets the inner content.
+    #[inline(always)]
     pub fn content(mut self, content: LogContent<'a>) -> Self {
         self.content = Box::new(content);
         self
@@ -64,15 +75,16 @@ impl<'a> PrefixBlock<'a> {
     }
 }
 
-impl<'a> Printable for PrefixBlock<'a> {
-    fn print<'b>(&'b self, printer: &mut Printer<'b>) {
-        let mut prefix_printer = printer.derive();
-        self.prefix.print(&mut prefix_printer);
-
+impl<'a> Printable<'a> for PrefixBlock<'a> {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
         let mut content_printer = printer.derive();
         self.content.print(&mut content_printer);
 
-        content_printer.indent(&prefix_printer, true);
+        let prefix = self.prefix.single_lined();
+        content_printer.indent(prefix.get_sections(), true);
         printer.append(content_printer);
     }
 }
@@ -99,7 +111,7 @@ mod tests {
     #[test]
     fn test_plain() {
         let log = PrefixBlock::new()
-            .prefix(TextBlock::new().add_styled_text(" | -> ", Style::new().bold().blue()))
+            .prefix(TextBlock::new().add_styled_text(" |\n-> ", Style::new().bold().blue()))
             .content(
                 LogContent::new().add_block(TextBlock::new().add_styled_text(
                     "The message\nin\nmultiple\nlines",
@@ -119,7 +131,7 @@ mod tests {
     #[test]
     fn test_styled() {
         let log = PrefixBlock::new()
-            .prefix(TextBlock::new().add_styled_text(" | -> ", Style::new().bold().blue()))
+            .prefix(TextBlock::new().add_styled_text(" |\n-> ", Style::new().bold().blue()))
             .content(
                 LogContent::new().add_block(TextBlock::new().add_styled_text(
                     "The message\nin\nmultiple\nlines",

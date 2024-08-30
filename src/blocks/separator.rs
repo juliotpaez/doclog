@@ -15,11 +15,13 @@ impl SeparatorBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
     /// Creates a new [SeparatorBlock].
+    #[inline(always)]
     pub fn new(width: usize, character: char) -> Self {
         Self { width, character }
     }
 
     /// Creates a new [SeparatorBlock] with a width of `width` using the [HORIZONTAL_BAR] character.
+    #[inline(always)]
     pub fn with_width(width: usize) -> Self {
         Self {
             width,
@@ -30,11 +32,13 @@ impl SeparatorBlock {
     // GETTERS ----------------------------------------------------------------
 
     /// The width of the separator.
+    #[inline(always)]
     pub fn get_width(&self) -> usize {
         self.width
     }
 
     /// The character used to repeat the separator.
+    #[inline(always)]
     pub fn get_character(&self) -> char {
         self.character
     }
@@ -42,20 +46,25 @@ impl SeparatorBlock {
     // SETTERS ----------------------------------------------------------------
 
     /// Sets the width of the separator.
+    #[inline(always)]
     pub fn width(mut self, width: usize) -> Self {
         self.width = width;
         self
     }
 
     /// Sets the character used to repeat the separator.
+    #[inline(always)]
     pub fn character(mut self, character: char) -> Self {
         self.character = character;
         self
     }
 }
 
-impl Printable for SeparatorBlock {
-    fn print<'b>(&'b self, printer: &mut Printer<'b>) {
+impl<'a> Printable<'a> for SeparatorBlock {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
         if self.width == 0 {
             return;
         }

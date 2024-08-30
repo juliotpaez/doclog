@@ -1,20 +1,20 @@
-// pub use stack::*;
-// pub use stack_trace::*;
 use crate::printer::{Printable, Printer};
 pub use header::*;
 pub use note::*;
 // pub use document::*;
 pub use prefix::*;
 pub use separator::*;
+// pub use stack::*;
+pub use stack_trace::*;
 pub use text::*;
 
 // mod document;
+mod header;
+mod note;
 mod prefix;
 mod separator;
 // mod stack;
-// mod stack_trace;
-mod header;
-mod note;
+mod stack_trace;
 mod text;
 
 /// A block log.
@@ -29,9 +29,8 @@ pub enum LogBlock<'a> {
     Separator(SeparatorBlock),
     Header(HeaderBlock<'a>),
     Note(NoteBlock<'a>),
-    // Document(DocumentBlock<'a>),
     // Stack(StackBlock<'a>),
-    // Tag(TagBlock<'a>),
+    // Document(DocumentBlock<'a>),
 }
 
 impl<'a> LogBlock<'a> {
@@ -48,6 +47,7 @@ impl<'a> LogBlock<'a> {
             LogBlock::Separator(v) => LogBlock::Separator(v),
             LogBlock::Header(v) => LogBlock::Header(v.make_owned()),
             LogBlock::Note(v) => LogBlock::Note(v.make_owned()),
+            // LogBlock::Stack(v) => LogBlock::Stack(v.make_owned()),
         }
     }
 }
@@ -58,8 +58,11 @@ impl<'a> From<TextBlock<'a>> for LogBlock<'a> {
     }
 }
 
-impl<'a> Printable for LogBlock<'a> {
-    fn print<'b>(&'b self, printer: &mut Printer<'b>) {
+impl<'a> Printable<'a> for LogBlock<'a> {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
         match self {
             // Basic blocks.
             LogBlock::Text(v) => v.print(printer),
@@ -69,6 +72,7 @@ impl<'a> Printable for LogBlock<'a> {
             LogBlock::Separator(v) => v.print(printer),
             LogBlock::Header(v) => v.print(printer),
             LogBlock::Note(v) => v.print(printer),
+            // LogBlock::Stack(v) => v.print(printer),
         }
     }
 }

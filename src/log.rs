@@ -159,8 +159,11 @@ impl<'a> Log<'a> {
     }
 }
 
-impl<'a> Printable for Log<'a> {
-    fn print<'b>(&'b self, printer: &mut Printer<'b>) {
+impl<'a> Printable<'a> for Log<'a> {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
         // Print content.
         self.content.print(printer);
 

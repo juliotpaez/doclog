@@ -1,6 +1,7 @@
 use crate::blocks::TextBlock;
 use crate::constants::NEW_LINE_RIGH;
 use crate::printer::{Printable, Printer, PrinterFormat};
+use crate::utils::text::remove_jump_lines;
 use crate::LogLevel;
 use chrono::{SecondsFormat, Utc};
 use const_format::concatcp;
@@ -10,6 +11,9 @@ use yansi::Style;
 
 /// A block that prints a title, showing the type of log and the message.
 /// It optionally shows the current date and thread.
+///
+/// When printed, code will get all newline characters `\n`
+/// replaced by whitespaces to only occupy one line.
 ///
 /// # Examples
 /// ```text
@@ -26,6 +30,8 @@ pub struct HeaderBlock<'a> {
 impl<'a> HeaderBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
+    /// Creates a new empty [HeaderBlock].
+    #[inline(always)]
     pub fn new() -> Self {
         Self::default()
     }
@@ -33,31 +39,31 @@ impl<'a> HeaderBlock<'a> {
     // GETTERS ----------------------------------------------------------------
 
     /// Returns the code.
+    #[inline(always)]
     pub fn get_code(&self) -> &str {
         &self.code
     }
 
-    /// Returns a mutable reference to the code.
-    pub fn get_code_mut(&mut self) -> &mut Cow<'a, str> {
-        &mut self.code
-    }
-
     /// Returns the location.
+    #[inline(always)]
     pub fn get_location(&self) -> &TextBlock<'a> {
         &self.location
     }
 
     /// Returns a mutable reference to the location.
+    #[inline(always)]
     pub fn get_location_mut(&mut self) -> &mut TextBlock<'a> {
         &mut self.location
     }
 
     /// Returns whether the date should be shown.
+    #[inline(always)]
     pub fn get_show_date(&self) -> bool {
         self.show_date
     }
 
     /// Returns whether the thread should be shown.
+    #[inline(always)]
     pub fn get_show_thread(&self) -> bool {
         self.show_thread
     }
@@ -65,30 +71,28 @@ impl<'a> HeaderBlock<'a> {
     // SETTERS ----------------------------------------------------------------
 
     /// Sets the code.
+    #[inline(always)]
     pub fn code(mut self, code: impl Into<Cow<'a, str>>) -> Self {
         self.code = code.into();
         self
     }
 
     /// Sets the location.
+    #[inline(always)]
     pub fn location(mut self, location: TextBlock<'a>) -> Self {
         self.location = location;
         self
     }
 
-    /// Sets the location as plain text.
-    pub fn plain_location(mut self, location: impl Into<Cow<'a, str>>) -> Self {
-        self.location = TextBlock::new().add_plain_text(location);
-        self
-    }
-
     /// Sets whether the date should be shown.
+    #[inline(always)]
     pub fn show_date(mut self, show_date: bool) -> Self {
         self.show_date = show_date;
         self
     }
 
     /// Sets whether the thread should be shown.
+    #[inline(always)]
     pub fn show_thread(mut self, show_thread: bool) -> Self {
         self.show_thread = show_thread;
         self
@@ -107,8 +111,11 @@ impl<'a> HeaderBlock<'a> {
     }
 }
 
-impl<'a> Printable for HeaderBlock<'a> {
-    fn print<'b>(&'b self, printer: &mut Printer<'b>) {
+impl<'a> Printable<'a> for HeaderBlock<'a> {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
         // Add tag.
         printer.push_styled_text(
             printer.level.tag().to_ascii_uppercase(),
@@ -117,13 +124,22 @@ impl<'a> Printable for HeaderBlock<'a> {
 
         // Add code.
         if !self.code.is_empty() {
-            printer.push_styled_text(format!("[{}]", self.code), Style::new().bold());
+            printer.push_styled_text(
+                format!("[{}]", remove_jump_lines(self.code.as_ref())),
+                Style::new().bold(),
+            );
         }
 
         // Add location.
         if !self.location.is_empty() {
             printer.push_plain_text(Cow::Borrowed(" in "));
-            self.location.print(printer);
+
+            let prefix = TextBlock::new_plain(" ".repeat(printer.level.tag().len() + 1));
+            let mut location_printer = printer.derive();
+
+            self.location.print(&mut location_printer);
+            location_printer.indent(prefix.get_sections(), false);
+            printer.append(location_printer);
         }
 
         // Add date.
@@ -192,12 +208,12 @@ mod tests {
         assert_eq!(text, "ERROR[c-xxxxx]");
 
         // Location
-        let log = HeaderBlock::new().plain_location("src/blocks/header.rs:3:26");
+        let log = HeaderBlock::new().location(TextBlock::new_plain("src/blocks/\n/header.rs:3:26"));
         let text = log
             .print_to_string(LogLevel::error(), PrinterFormat::Plain)
             .to_string();
 
-        assert_eq!(text, "ERROR in src/blocks/header.rs:3:26");
+        assert_eq!(text, "ERROR in src/blocks/\n      /header.rs:3:26");
 
         // Date
         let log = HeaderBlock::new().show_date(true);
@@ -223,7 +239,7 @@ mod tests {
         // All
         let log = HeaderBlock::new()
             .code("c-xxxxx")
-            .plain_location("src/blocks/header.rs:3:26")
+            .location(TextBlock::new_plain("src/blocks/header.rs:3:26"))
             .show_date(true)
             .show_thread(true);
         let text = log
@@ -263,7 +279,7 @@ mod tests {
         );
 
         // Location
-        let log = HeaderBlock::new().plain_location("src/blocks/header.rs:3:26");
+        let log = HeaderBlock::new().location(TextBlock::new_plain("src/blocks/\n/header.rs:3:26"));
         let text = log
             .print_to_string(LogLevel::info(), PrinterFormat::Styled)
             .to_string();
@@ -271,7 +287,7 @@ mod tests {
         println!("{}", text);
         assert_eq!(
             text,
-            "\u{1b}[1;34mINFO\u{1b}[0m in src/blocks/header.rs:3:26"
+            "\u{1b}[1;34mINFO\u{1b}[0m in src/blocks/\n     /header.rs:3:26"
         );
 
         // Date
@@ -306,7 +322,7 @@ mod tests {
         // All
         let log = HeaderBlock::new()
             .code("c-xxxxx")
-            .plain_location("src/blocks/header.rs:3:26")
+            .location(TextBlock::new_plain("src/blocks/header.rs:3:26"))
             .show_date(true)
             .show_thread(true);
         let text = log
@@ -318,7 +334,7 @@ mod tests {
         assert_eq!(
             text,
             format!(
-                "\u{1b}[1;31mERROR\u{1b}[0m\u{1b}[1m[c-xxxxx]\u{1b}[0m in src/blocks/header.rs:3:26\u{1b}[1;31m\n ↪ at \u{1b}[0m\u{1b}[1m{date}\u{1b}[0m\u{1b}[1;31m\n ↪ in thread \u{1b}[0m\u{1b}[1m{thread}\u{1b}[0m"
+                "\u{1b}[1;31mERROR\u{1b}[0m\u{1b}[1m[c-xxxxx]\u{1b}[0m in src/blocks/header.rs:3:26\n\u{1b}[1;31m ↪ at \u{1b}[0m\u{1b}[1m{date}\n\u{1b}[0m\u{1b}[1;31m ↪ in thread \u{1b}[0m\u{1b}[1m{thread}\u{1b}[0m"
             )
         );
     }

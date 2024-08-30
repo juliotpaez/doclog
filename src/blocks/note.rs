@@ -10,7 +10,7 @@ use yansi::Style;
 /// ```text
 /// = <text>
 /// ```
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct NoteBlock<'a> {
     text: TextBlock<'a>,
 }
@@ -18,20 +18,22 @@ pub struct NoteBlock<'a> {
 impl<'a> NoteBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
+    /// Creates a new empty [NoteBlock].
+    #[inline(always)]
     pub fn new() -> Self {
-        Self {
-            text: TextBlock::new(),
-        }
+        Self::default()
     }
 
     // GETTERS ----------------------------------------------------------------
 
     /// Returns the text.
+    #[inline(always)]
     pub fn get_text(&self) -> &TextBlock<'a> {
         &self.text
     }
 
     /// Returns a mutable reference to the text.
+    #[inline(always)]
     pub fn get_text_mut(&mut self) -> &mut TextBlock<'a> {
         &mut self.text
     }
@@ -39,6 +41,7 @@ impl<'a> NoteBlock<'a> {
     // SETTERS ----------------------------------------------------------------
 
     /// Sets the text.
+    #[inline(always)]
     pub fn text(mut self, text: TextBlock<'a>) -> Self {
         self.text = text;
         self
@@ -54,8 +57,11 @@ impl<'a> NoteBlock<'a> {
     }
 }
 
-impl<'a> Printable for NoteBlock<'a> {
-    fn print<'b>(&'b self, printer: &mut Printer<'b>) {
+impl<'a> Printable<'a> for NoteBlock<'a> {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
         printer.push_styled_text("= ", Style::new().bold().fg(printer.level.color()));
         self.text.print(printer);
     }
@@ -75,7 +81,7 @@ impl<'a> Display for NoteBlock<'a> {
 
 #[cfg(test)]
 mod tests {
-    use yansi::{Paint, Style};
+    use yansi::Style;
 
     use crate::LogLevel;
 

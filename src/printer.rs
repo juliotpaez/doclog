@@ -1,22 +1,15 @@
+use crate::blocks::TextSection;
 use crate::LogLevel;
-use memchr::memchr_iter;
 use std::borrow::Cow;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::iter::once;
 use yansi::Style;
 
 #[derive(Debug, Clone)]
 pub struct Printer<'a> {
     pub level: LogLevel,
     pub format: PrinterFormat,
-    pub elements: Vec<PaintedElement<'a>>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct PaintedElement<'a> {
-    pub text: Cow<'a, str>,
-    pub style: Style,
+    pub lines: Vec<Vec<TextSection<'a>>>,
 }
 
 impl<'a> Printer<'a> {
@@ -27,34 +20,106 @@ impl<'a> Printer<'a> {
         Self {
             level,
             format,
-            elements: Vec::new(),
+            lines: Vec::new(),
         }
     }
 
     // METHODS ----------------------------------------------------------------
 
     /// Derives a new [Printer] from this one.
-    pub fn derive(&self) -> Self {
-        Self {
+    pub fn derive<'b>(&self) -> Printer<'b> {
+        Printer {
             level: self.level,
             format: self.format,
-            elements: Vec::new(),
+            lines: Vec::new(),
         }
     }
 
     /// Appends another [Printer] to this one.
     pub fn append(&mut self, other: Printer<'a>) {
-        self.elements.extend(other.elements);
+        if other.lines.is_empty() {
+            return;
+        }
+
+        if self.lines.is_empty() {
+            self.lines = other.lines;
+            return;
+        }
+
+        let mut iter = other.lines.into_iter();
+
+        self.lines.last_mut().unwrap().extend(iter.next().unwrap());
+        self.lines.extend(iter);
     }
 
-    /// Pushes a painted element to the printer.
-    pub fn push_painted_element(&mut self, element: PaintedElement<'a>) {
-        self.elements.push(element);
+    /// Appends another [Printer] to this one.
+    pub fn append_lines(&mut self, other: Printer<'a>) {
+        self.lines.extend(other.lines);
+    }
+
+    /// Pushes a text section to the printer.
+    pub fn push_text_section(&mut self, element: TextSection<'a>) {
+        match element.text {
+            Cow::Borrowed(text) => {
+                for (i, line) in text.lines().enumerate() {
+                    // Push to the last if first.
+                    if let (0, Some(last)) = (i, self.lines.last_mut()) {
+                        if !line.is_empty() {
+                            last.push(TextSection {
+                                text: Cow::Borrowed(line),
+                                style: element.style,
+                            });
+                        }
+                        continue;
+                    }
+
+                    if line.is_empty() {
+                        self.lines.push(vec![]);
+                    } else {
+                        self.lines.push(vec![TextSection {
+                            text: Cow::Borrowed(line),
+                            style: element.style,
+                        }]);
+                    }
+                }
+
+                if text.ends_with('\n') {
+                    self.lines.push(vec![]);
+                }
+            }
+            Cow::Owned(text) => {
+                for (i, line) in text.lines().enumerate() {
+                    // Push to the last if first.
+                    if let (0, Some(last)) = (i, self.lines.last_mut()) {
+                        if !line.is_empty() {
+                            last.push(TextSection {
+                                text: Cow::Owned(line.to_string()),
+                                style: element.style,
+                            });
+                        }
+                        continue;
+                    }
+
+                    if line.is_empty() {
+                        self.lines.push(vec![]);
+                    } else {
+                        self.lines.push(vec![TextSection {
+                            text: Cow::Owned(line.to_string()),
+                            style: element.style,
+                        }]);
+                    }
+                }
+
+                if text.ends_with('\n') {
+                    self.lines.push(vec![]);
+                }
+            }
+        }
     }
 
     /// Pushes a styled string to the printer.
     pub fn push_plain_text(&mut self, text: impl Into<Cow<'a, str>>) {
-        self.push_painted_element(PaintedElement {
+        self.push_text_section(TextSection {
             text: text.into(),
             style: Style::new(),
         });
@@ -62,121 +127,85 @@ impl<'a> Printer<'a> {
 
     /// Pushes a styled string to the printer.
     pub fn push_styled_text(&mut self, text: impl Into<Cow<'a, str>>, style: Style) {
-        self.push_painted_element(PaintedElement {
+        self.push_text_section(TextSection {
             text: text.into(),
             style,
         });
     }
 
-    /// Indents the content of this [Printer] with the content of another [Printer].
-    pub fn indent(&mut self, other: &Printer<'a>, indent_first_line: bool) {
-        if other.elements.is_empty() {
+    /// Indents the content of this [Printer] with a list of text sections.
+    pub fn indent(&mut self, sections: &[TextSection<'a>], indent_first_line: bool) {
+        if sections.is_empty() {
             return;
         }
 
-        let mut self_index = if indent_first_line {
-            self.elements.splice(0..0, other.elements.iter().cloned());
-            other.elements.iter().len()
-        } else {
-            0
-        };
-
-        while self_index < self.elements.len() {
-            let PaintedElement {
-                text: self_text,
-                style: self_style,
-            } = &self.elements[self_index];
-
-            let mut start_index = 0;
-            let mut increase = 0;
-            let iterator = memchr_iter(b'\n', self_text.as_bytes())
-                .chain(once(self_text.len()))
-                .flat_map(|position| {
-                    let is_first = start_index == 0;
-                    let current_line = match self_text {
-                        Cow::Borrowed(self_content) => {
-                            if position >= self_content.len() {
-                                Cow::Borrowed(&self_content[start_index..])
-                            } else {
-                                Cow::Borrowed(&self_content[start_index..=position])
-                            }
-                        }
-                        Cow::Owned(self_content) => {
-                            if position >= self_content.len() {
-                                Cow::Owned(self_content[start_index..].to_string())
-                            } else {
-                                Cow::Owned(self_content[start_index..=position].to_string())
-                            }
-                        }
-                    };
-                    start_index = position + 1;
-
-                    (0..if is_first {
-                        0
-                    } else {
-                        increase += other.elements.len();
-                        other.elements.len()
-                    })
-                        .map(|v| other.elements[v].clone())
-                        .chain(
-                            once(if current_line.is_empty() {
-                                None
-                            } else {
-                                increase += 1;
-                                Some({
-                                    let all_whitespace =
-                                        current_line.chars().all(|c| char::is_ascii_whitespace(&c));
-
-                                    PaintedElement {
-                                        text: current_line,
-                                        // Optimization to match the style of the indentation when no visual content is present.
-                                        // This way we avoid unnecessary ANSI codes.
-                                        style: if all_whitespace {
-                                            other.elements.last().unwrap().style
-                                        } else {
-                                            *self_style
-                                        },
-                                    }
-                                })
-                            })
-                            .flatten(),
-                        )
-                });
-            let v = iterator.collect::<Vec<_>>();
-            self.elements.splice(self_index..self_index + 1, v);
-            self_index += increase;
+        for line in self
+            .lines
+            .iter_mut()
+            .skip(if indent_first_line { 0 } else { 1 })
+        {
+            line.splice(0..0, sections.iter().cloned());
         }
     }
 
     /// Implement this to provide custom formatting for this type.
     pub fn fmt(&self, fmt: &mut Formatter<'_>, format: PrinterFormat) -> fmt::Result {
-        match format {
-            PrinterFormat::Plain => {
-                for painted in &self.elements {
-                    write!(fmt, "{}", painted.text)?;
-                }
-            }
-            PrinterFormat::Default | PrinterFormat::Styled => {
-                let mut prev_style: Option<&Style> = None;
+        let styled = match format {
+            PrinterFormat::Default => yansi::is_enabled(),
+            PrinterFormat::Plain => false,
+            PrinterFormat::Styled => true,
+        };
 
-                for painted in &self.elements {
-                    // Print previos suffix and current prefix only if the style is different.
-                    if let Some(prev_style) = prev_style.take() {
-                        if prev_style != &painted.style {
-                            prev_style.fmt_suffix(fmt)?;
-                            painted.style.fmt_prefix(fmt)?;
+        if styled {
+            let mut prev_style: Option<&Style> = None;
+
+            for (i, line) in self.lines.iter().enumerate() {
+                if i != 0 {
+                    writeln!(fmt)?;
+                }
+
+                for section in line {
+                    if section.style.enabled() {
+                        let all_whitespace =
+                            section.text.chars().all(|c| char::is_ascii_whitespace(&c));
+
+                        // Print previous suffix and current prefix only if the style is different.
+                        if let Some(prev_style) = prev_style.take() {
+                            if prev_style != &section.style && !all_whitespace {
+                                prev_style.fmt_suffix(fmt)?;
+                                section.style.fmt_prefix(fmt)?;
+                            }
+                        } else if !all_whitespace {
+                            section.style.fmt_prefix(fmt)?;
+                        }
+
+                        write!(fmt, "{}", section.text)?;
+
+                        if !all_whitespace {
+                            prev_style = Some(&section.style);
                         }
                     } else {
-                        painted.style.fmt_prefix(fmt)?;
+                        // Print previous suffix.
+                        if let Some(prev_style) = prev_style.take() {
+                            prev_style.fmt_suffix(fmt)?;
+                        }
+
+                        write!(fmt, "{}", section.text)?;
                     }
+                }
+            }
 
-                    write!(fmt, "{}", painted.text)?;
-
-                    prev_style = Some(&painted.style);
+            if let Some(prev_style) = prev_style.take() {
+                prev_style.fmt_suffix(fmt)?;
+            }
+        } else {
+            for (i, line) in self.lines.iter().enumerate() {
+                if i != 0 {
+                    writeln!(fmt)?;
                 }
 
-                if let Some(prev_style) = prev_style.take() {
-                    prev_style.fmt_suffix(fmt)?;
+                for section in line {
+                    write!(fmt, "{}", section.text)?;
                 }
             }
         }
@@ -211,9 +240,11 @@ pub enum PrinterFormat {
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-pub trait Printable {
+pub trait Printable<'a> {
     /// Maps the content of this type to a [Printer].
-    fn print<'a>(&'a self, printer: &mut Printer<'a>);
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's;
 
     /// Converts the content of this type to a string.
     fn print_to_string(&self, level: LogLevel, format: PrinterFormat) -> String {
@@ -237,12 +268,19 @@ mod tests {
         base.push_styled_text("this\nis\n\na\ntest\n", Style::new().bold().yellow());
         base.push_plain_text("::a\nplain\ntest\n");
 
-        let mut other = Printer::new(LogLevel::error(), PrinterFormat::Styled);
-        other.push_styled_text("--", Style::new().bold().blue());
-        other.push_styled_text(">>", Style::new().bold().green());
+        let indent = vec![
+            TextSection {
+                text: Cow::Borrowed("--"),
+                style: Style::new().bold().blue(),
+            },
+            TextSection {
+                text: Cow::Borrowed(">>"),
+                style: Style::new().bold().green(),
+            },
+        ];
 
         // Generate result.
-        base.indent(&other, true);
+        base.indent(&indent, true);
         let result = format!("{}", base);
 
         println!("{}", result);
@@ -253,23 +291,86 @@ mod tests {
     }
 
     #[test]
+    fn test_indent_plain_skip_first() {
+        let mut base = Printer::new(LogLevel::error(), PrinterFormat::Plain);
+        base.push_styled_text("this\nis\n\na\ntest", Style::new().bold().yellow());
+        base.push_plain_text("::a\nplain\ntest\n");
+
+        let indent = vec![
+            TextSection {
+                text: Cow::Borrowed("--"),
+                style: Style::new().bold().blue(),
+            },
+            TextSection {
+                text: Cow::Borrowed(">>"),
+                style: Style::new().bold().green(),
+            },
+        ];
+
+        // Generate result.
+        base.indent(&indent, false);
+        let result = format!("{}", base);
+
+        println!("{}", result);
+        assert_eq!(
+            result,
+            "this\n-->>is\n-->>\n-->>a\n-->>test::a\n-->>plain\n-->>test\n-->>"
+        );
+    }
+
+    #[test]
     fn test_indent_styled() {
         let mut base = Printer::new(LogLevel::error(), PrinterFormat::Styled);
         base.push_styled_text("this\nis\n\na\ntest\n", Style::new().bold().yellow());
         base.push_plain_text("::a\nplain\ntest\n");
 
-        let mut other = Printer::new(LogLevel::error(), PrinterFormat::Styled);
-        other.push_styled_text("--", Style::new().bold().blue());
-        other.push_styled_text(">>", Style::new().bold().green());
+        let indent = vec![
+            TextSection {
+                text: Cow::Borrowed("--"),
+                style: Style::new().bold().blue(),
+            },
+            TextSection {
+                text: Cow::Borrowed(">>"),
+                style: Style::new().bold().green(),
+            },
+        ];
 
         // Generate result.
-        base.indent(&other, true);
+        base.indent(&indent, true);
         let result = format!("{}", base);
 
         println!("{}", result);
         assert_eq!(
             result,
             "\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m\u{1b}[1;33mthis\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m\u{1b}[1;33mis\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m\u{1b}[1;33ma\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m\u{1b}[1;33mtest\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m::a\n\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0mplain\n\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0mtest\n\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m"
+        );
+    }
+
+    #[test]
+    fn test_indent_styled_skip_first() {
+        let mut base = Printer::new(LogLevel::error(), PrinterFormat::Styled);
+        base.push_styled_text("this\nis\n\na\ntest", Style::new().bold().yellow());
+        base.push_plain_text("::a\nplain\ntest\n");
+
+        let indent = vec![
+            TextSection {
+                text: Cow::Borrowed("--"),
+                style: Style::new().bold().blue(),
+            },
+            TextSection {
+                text: Cow::Borrowed(">>"),
+                style: Style::new().bold().green(),
+            },
+        ];
+
+        // Generate result.
+        base.indent(&indent, false);
+        let result = format!("{}", base);
+
+        println!("{}", result);
+        assert_eq!(
+            result,
+            "\u{1b}[1;33mthis\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m\u{1b}[1;33mis\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m\u{1b}[1;33ma\n\u{1b}[0m\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m\u{1b}[1;33mtest\u{1b}[0m::a\n\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0mplain\n\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0mtest\n\u{1b}[1;34m--\u{1b}[0m\u{1b}[1;32m>>\u{1b}[0m"
         );
     }
 }
