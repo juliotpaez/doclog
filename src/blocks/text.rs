@@ -23,27 +23,32 @@ impl<'a> TextBlock<'a> {
 
     // GETTERS ----------------------------------------------------------------
 
+    /// Returns whether the text block is empty.
+    pub fn is_empty(&self) -> bool {
+        self.sections.is_empty()
+    }
+
     /// Returns the sections of the text block.
     pub fn get_sections(&self) -> &[PaintedElement<'a>] {
         &self.sections
     }
 
-    /// Returns a mutable reference to the sections of the text block.
-    pub fn get_sections_mut(&mut self) -> &mut SmallVec<[PaintedElement<'a>; 3]> {
-        &mut self.sections
-    }
-
     // METHODS ----------------------------------------------------------------
 
+    /// Adds a plain text to the block.
     pub fn add_plain_text(self, text: impl Into<Cow<'a, str>>) -> Self {
         self.add_styled_text(text, Style::new())
     }
 
+    /// Adds a styled text to the block.
     pub fn add_styled_text(mut self, text: impl Into<Cow<'a, str>>, style: Style) -> Self {
-        self.sections.push(PaintedElement {
-            text: text.into(),
-            style,
-        });
+        let text = text.into();
+
+        if text.is_empty() {
+            return self;
+        }
+
+        self.sections.push(PaintedElement { text, style });
         self
     }
 

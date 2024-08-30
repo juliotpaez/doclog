@@ -1,9 +1,8 @@
 // pub use stack::*;
 // pub use stack_trace::*;
-// pub use tag::*;
 use crate::printer::{Printable, Printer};
-// pub use note::*;
 pub use header::*;
+pub use note::*;
 // pub use document::*;
 pub use prefix::*;
 pub use separator::*;
@@ -11,12 +10,11 @@ pub use text::*;
 
 // mod document;
 mod prefix;
-// mod note;
 mod separator;
 // mod stack;
 // mod stack_trace;
-// mod tag;
 mod header;
+mod note;
 mod text;
 
 /// A block log.
@@ -30,10 +28,10 @@ pub enum LogBlock<'a> {
     // Custom blocks.
     Separator(SeparatorBlock),
     Header(HeaderBlock<'a>),
+    Note(NoteBlock<'a>),
     // Document(DocumentBlock<'a>),
     // Stack(StackBlock<'a>),
     // Tag(TagBlock<'a>),
-    // Note(NoteBlock<'a>),
 }
 
 impl<'a> LogBlock<'a> {
@@ -49,6 +47,7 @@ impl<'a> LogBlock<'a> {
             // Custom blocks.
             LogBlock::Separator(v) => LogBlock::Separator(v),
             LogBlock::Header(v) => LogBlock::Header(v.make_owned()),
+            LogBlock::Note(v) => LogBlock::Note(v.make_owned()),
         }
     }
 }
@@ -69,6 +68,7 @@ impl<'a> Printable for LogBlock<'a> {
             // Custom blocks.
             LogBlock::Separator(v) => v.print(printer),
             LogBlock::Header(v) => v.print(printer),
+            LogBlock::Note(v) => v.print(printer),
         }
     }
 }

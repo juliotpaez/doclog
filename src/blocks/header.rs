@@ -1,7 +1,6 @@
 use crate::blocks::TextBlock;
 use crate::constants::NEW_LINE_RIGH;
 use crate::printer::{Printable, Printer, PrinterFormat};
-use crate::utils::text::remove_jump_lines;
 use crate::LogLevel;
 use chrono::{SecondsFormat, Utc};
 use const_format::concatcp;
@@ -18,8 +17,8 @@ use yansi::Style;
 /// ```
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct HeaderBlock<'a> {
-    code: Option<Cow<'a, str>>,
-    location: Option<TextBlock<'a>>,
+    code: Cow<'a, str>,
+    location: TextBlock<'a>,
     show_date: bool,
     show_thread: bool,
 }
@@ -34,22 +33,22 @@ impl<'a> HeaderBlock<'a> {
     // GETTERS ----------------------------------------------------------------
 
     /// Returns the code.
-    pub fn get_code(&self) -> &Option<Cow<'a, str>> {
+    pub fn get_code(&self) -> &str {
         &self.code
     }
 
     /// Returns a mutable reference to the code.
-    pub fn get_code_mut(&mut self) -> &mut Option<Cow<'a, str>> {
+    pub fn get_code_mut(&mut self) -> &mut Cow<'a, str> {
         &mut self.code
     }
 
     /// Returns the location.
-    pub fn get_location(&self) -> &Option<TextBlock<'a>> {
+    pub fn get_location(&self) -> &TextBlock<'a> {
         &self.location
     }
 
     /// Returns a mutable reference to the location.
-    pub fn get_location_mut(&mut self) -> &mut Option<TextBlock<'a>> {
+    pub fn get_location_mut(&mut self) -> &mut TextBlock<'a> {
         &mut self.location
     }
 
@@ -67,31 +66,19 @@ impl<'a> HeaderBlock<'a> {
 
     /// Sets the code.
     pub fn code(mut self, code: impl Into<Cow<'a, str>>) -> Self {
-        self.code = Some(code.into());
-        self
-    }
-
-    /// Removes the code.
-    pub fn remove_code(mut self) -> Self {
-        self.code = None;
+        self.code = code.into();
         self
     }
 
     /// Sets the location.
     pub fn location(mut self, location: TextBlock<'a>) -> Self {
-        self.location = Some(location);
+        self.location = location;
         self
     }
 
     /// Sets the location as plain text.
     pub fn plain_location(mut self, location: impl Into<Cow<'a, str>>) -> Self {
-        self.location = Some(TextBlock::new().add_plain_text(location));
-        self
-    }
-
-    /// Removes the location.
-    pub fn remove_location(mut self) -> Self {
-        self.location = None;
+        self.location = TextBlock::new().add_plain_text(location);
         self
     }
 
@@ -112,8 +99,8 @@ impl<'a> HeaderBlock<'a> {
     /// Makes this type owned, i.e. changing the lifetime to `'static`.
     pub fn make_owned(self) -> HeaderBlock<'static> {
         HeaderBlock {
-            code: self.code.map(|v| Cow::Owned(v.into_owned())),
-            location: self.location.map(|v| v.make_owned()),
+            code: Cow::Owned(self.code.into_owned()),
+            location: self.location.make_owned(),
             show_date: self.show_date,
             show_thread: self.show_thread,
         }
@@ -129,14 +116,14 @@ impl<'a> Printable for HeaderBlock<'a> {
         );
 
         // Add code.
-        if let Some(code) = &self.code {
-            printer.push_styled_text(format!("[{}]", code), Style::new().bold());
+        if !self.code.is_empty() {
+            printer.push_styled_text(format!("[{}]", self.code), Style::new().bold());
         }
 
         // Add location.
-        if let Some(location) = &self.location {
+        if !self.location.is_empty() {
             printer.push_plain_text(Cow::Borrowed(" in "));
-            location.print(printer);
+            self.location.print(printer);
         }
 
         // Add date.
