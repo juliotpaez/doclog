@@ -4,7 +4,7 @@ pub use note::*;
 // pub use document::*;
 pub use prefix::*;
 pub use separator::*;
-// pub use stack::*;
+pub use stack::*;
 pub use stack_trace::*;
 pub use text::*;
 
@@ -13,7 +13,7 @@ mod header;
 mod note;
 mod prefix;
 mod separator;
-// mod stack;
+mod stack;
 mod stack_trace;
 mod text;
 
@@ -29,7 +29,7 @@ pub enum LogBlock<'a> {
     Separator(SeparatorBlock),
     Header(HeaderBlock<'a>),
     Note(NoteBlock<'a>),
-    // Stack(StackBlock<'a>),
+    Stack(StackBlock<'a>),
     // Document(DocumentBlock<'a>),
 }
 
@@ -47,7 +47,7 @@ impl<'a> LogBlock<'a> {
             LogBlock::Separator(v) => LogBlock::Separator(v),
             LogBlock::Header(v) => LogBlock::Header(v.make_owned()),
             LogBlock::Note(v) => LogBlock::Note(v.make_owned()),
-            // LogBlock::Stack(v) => LogBlock::Stack(v.make_owned()),
+            LogBlock::Stack(v) => LogBlock::Stack(v.make_owned()),
         }
     }
 }
@@ -72,7 +72,7 @@ impl<'a> Printable<'a> for LogBlock<'a> {
             LogBlock::Separator(v) => v.print(printer),
             LogBlock::Header(v) => v.print(printer),
             LogBlock::Note(v) => v.print(printer),
-            // LogBlock::Stack(v) => v.print(printer),
+            LogBlock::Stack(v) => v.print(printer),
         }
     }
 }

@@ -1,165 +1,131 @@
+use crate::blocks::TextBlock;
+use crate::printer::{Printable, Printer, PrinterFormat};
+use crate::LogLevel;
 use std::borrow::Cow;
+use std::fmt::Display;
+use yansi::Style;
 
-use crate::utils::text::{color_bold_if, indent_text, remove_jump_lines};
-use crate::Log;
-
-/// A trace message of a stack block.
-#[derive(Debug, Clone, Eq, PartialEq)]
+/// A trace message of a stack block. It can include a file location, a path inside the code
+/// and a message.
+///
+/// When printed, location and path will get all newline characters `\n`
+/// replaced by whitespaces to only occupy one line.
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct StackTraceBlock<'a> {
-    location: Cow<'a, str>,
-    inner_path: Option<Cow<'a, str>>,
-    line: Option<usize>,
-    column: Option<usize>,
-    message: Option<Cow<'a, str>>,
+    file_location: TextBlock<'a>,
+    code_path: TextBlock<'a>,
+    message: TextBlock<'a>,
 }
 
 impl<'a> StackTraceBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(location: impl Into<Cow<'a, str>>) -> StackTraceBlock<'a> {
-        StackTraceBlock {
-            location: location.into(),
-            inner_path: None,
-            line: None,
-            column: None,
-            message: None,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     // GETTERS ----------------------------------------------------------------
 
-    /// The file path of the trace.
-    pub fn get_location(&self) -> &Cow<'a, str> {
-        &self.location
+    /// Returns the file location.
+    pub fn get_file_location(&self) -> &TextBlock<'a> {
+        &self.file_location
     }
 
-    /// The relative path of the trace inside a file, e.g. class.method.
-    pub fn get_inner_path(&self) -> &Option<Cow<'a, str>> {
-        &self.inner_path
+    /// Returns a mutable reference to the file location.
+    pub fn get_file_location_mut(&mut self) -> &mut TextBlock<'a> {
+        &mut self.file_location
     }
 
-    /// The line of the file where the stack trace is produced.
-    pub fn get_line(&self) -> Option<usize> {
-        self.line
+    /// Returns the code path.
+    pub fn get_code_path(&self) -> &TextBlock<'a> {
+        &self.code_path
     }
 
-    /// The column of the file where the stack trace is produced.
-    pub fn get_column(&self) -> Option<usize> {
-        self.column
+    /// Returns a mutable reference to the code path.
+    pub fn get_inner_code_path_mut(&mut self) -> &mut TextBlock<'a> {
+        &mut self.code_path
     }
 
-    /// The message to show.
-    pub fn get_message(&self) -> &Option<Cow<'a, str>> {
+    /// Returns the message.
+    pub fn get_message(&self) -> &TextBlock<'a> {
         &self.message
+    }
+
+    /// Returns a mutable reference to the message.
+    pub fn get_message_mut(&mut self) -> &mut TextBlock<'a> {
+        &mut self.message
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn location(mut self, location: impl Into<Cow<'a, str>>) -> Self {
-        self.location = location.into();
+    /// Sets the file location.
+    pub fn file_location(mut self, file_location: TextBlock<'a>) -> Self {
+        self.file_location = file_location;
         self
     }
 
-    pub fn inner_path(mut self, inner_path: impl Into<Cow<'a, str>>) -> Self {
-        self.inner_path = Some(inner_path.into());
+    /// Sets the inner code path.
+    pub fn code_path(mut self, code_path: TextBlock<'a>) -> Self {
+        self.code_path = code_path;
         self
     }
 
-    pub fn clear_inner_path(mut self) -> Self {
-        self.inner_path = None;
-        self
-    }
-
-    pub fn line(mut self, line: usize) -> Self {
-        self.line = Some(line);
-        self
-    }
-
-    pub fn clear_line(mut self) -> Self {
-        self.line = None;
-        self
-    }
-
-    pub fn column(mut self, column: usize) -> Self {
-        self.column = Some(column);
-        self
-    }
-
-    pub fn clear_column(mut self) -> Self {
-        self.column = None;
-        self
-    }
-
-    pub fn message(mut self, message: impl Into<Cow<'a, str>>) -> Self {
-        self.message = Some(message.into());
-        self
-    }
-
-    pub fn clear_message(mut self) -> Self {
-        self.message = None;
+    /// Sets the message.
+    pub fn message(mut self, message: TextBlock<'a>) -> Self {
+        self.message = message;
         self
     }
 
     // METHODS ----------------------------------------------------------------
 
-    pub(crate) fn to_text(&self, log: &Log<'a>, in_ansi: bool, buffer: &mut String) {
-        let location = remove_jump_lines(&self.location);
-        let inner_path = self
-            .inner_path
-            .as_ref()
-            .map(|inner_path| remove_jump_lines(inner_path));
-
-        let message = self
-            .message
-            .as_ref()
-            .map(|message| indent_text(message, "    ", false));
-
-        buffer.push_str(location.as_str());
-
-        if let Some(line) = self.line {
-            buffer.push(':');
-            buffer.push_str(format!("{}", line).as_str());
-
-            if let Some(column) = self.column {
-                buffer.push(':');
-                buffer.push_str(format!("{}", column).as_str());
-            }
-        } else if let Some(column) = self.column {
-            buffer.push_str(":??:");
-            buffer.push_str(format!("{}", column).as_str());
-        }
-
-        if let Some(inner_path) = inner_path {
-            buffer.push(' ');
-            buffer.push_str(&color_bold_if(
-                "at".to_string(),
-                log.level().color(),
-                in_ansi,
-            ));
-            buffer.push(' ');
-            buffer.push_str(inner_path.as_str());
-        }
-
-        if let Some(message) = message {
-            buffer.push(' ');
-            buffer.push_str(&color_bold_if(
-                "-".to_string(),
-                log.level().color(),
-                in_ansi,
-            ));
-            buffer.push(' ');
-            buffer.push_str(message.as_str());
+    /// Makes this type owned, i.e. changing the lifetime to `'static`.
+    pub fn make_owned(self) -> StackTraceBlock<'static> {
+        StackTraceBlock {
+            file_location: self.file_location.make_owned(),
+            code_path: self.code_path.make_owned(),
+            message: self.message.make_owned(),
         }
     }
+}
 
-    pub fn make_owned<'b>(&self) -> StackTraceBlock<'b> {
-        StackTraceBlock {
-            location: Cow::Owned(self.location.to_string()),
-            inner_path: self.inner_path.as_ref().map(|v| Cow::Owned(v.to_string())),
-            line: self.column,
-            column: self.column,
-            message: self.message.as_ref().map(|v| Cow::Owned(v.to_string())),
+impl<'a> Printable<'a> for StackTraceBlock<'a> {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
+        // Print file location.
+        if !self.file_location.is_empty() {
+            self.file_location.single_lined().print(printer);
+        } else {
+            printer.push_plain_text("<unknown location>");
         }
+
+        // Print code path.
+        if !self.code_path.is_empty() {
+            printer.push_styled_text(
+                Cow::Borrowed("("),
+                Style::new().bold().fg(printer.level.color()),
+            );
+            self.code_path.single_lined().print(printer);
+            printer.push_styled_text(
+                Cow::Borrowed(")"),
+                Style::new().bold().fg(printer.level.color()),
+            );
+        }
+
+        // Print message.
+        if !self.message.is_empty() {
+            printer.push_styled_text(" - ", Style::new().bold().fg(printer.level.color()));
+            self.message.print(printer);
+        }
+    }
+}
+
+impl<'a> Display for StackTraceBlock<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut printer = Printer::new(LogLevel::trace(), PrinterFormat::Plain);
+        self.print(&mut printer);
+        printer.fmt(f, PrinterFormat::Plain)
     }
 }
 
@@ -169,151 +135,117 @@ impl<'a> StackTraceBlock<'a> {
 
 #[cfg(test)]
 mod tests {
-    use yansi::Style;
-
-    use crate::{Log, LogLevel};
-
     use super::*;
+    use crate::LogLevel;
 
     #[test]
     fn test_plain() {
-        // LOCATION
-        let mut text = String::new();
-        let log = Log::info();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test");
-        stack_trace.to_text(&log, false, &mut text);
+        // Empty
+        let log = StackTraceBlock::new();
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
-        assert_eq!(text, "/path/to/file.test");
+        assert_eq!(text, "<unknown location>");
 
-        // LOCATION + LINE
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test").line(15);
-        stack_trace.to_text(&log, false, &mut text);
+        // Location
+        let log =
+            StackTraceBlock::new().file_location(TextBlock::new_plain("/path/to/file.rs:15:24"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
-        assert_eq!(text, "/path/to/file.test:15");
+        assert_eq!(text, "/path/to/file.rs:15:24");
 
-        // LOCATION + COLUMN
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test").column(24);
-        stack_trace.to_text(&log, false, &mut text);
+        // Inner path
+        let log = StackTraceBlock::new().code_path(TextBlock::new_plain("crate::mod::impl"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
-        assert_eq!(text, "/path/to/file.test:??:24");
+        assert_eq!(text, "<unknown location>(crate::mod::impl)");
 
-        // LOCATION + LINE + COLUMN
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test")
-            .line(15)
-            .column(24);
-        stack_trace.to_text(&log, false, &mut text);
+        // Message
+        let log = StackTraceBlock::new().message(TextBlock::new_plain("this is a message"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
-        assert_eq!(text, "/path/to/file.test:15:24");
+        assert_eq!(text, "<unknown location> - this is a message");
 
-        // LOCATION + INNER_PATH
-        let mut text = String::new();
-        let stack_trace =
-            StackTraceBlock::new("/path/t\no/file.test").inner_path("path::t\no::class");
-        stack_trace.to_text(&log, false, &mut text);
-
-        assert_eq!(text, "/path/t o/file.test at path::t o::class");
-
-        // LOCATION + MESSAGE
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test").message("Multiline\nmessage");
-        stack_trace.to_text(&log, false, &mut text);
-
-        assert_eq!(text, "/path/to/file.test - Multiline\n    message");
-
-        // LOCATION + ALL
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test")
-            .inner_path("path::t\no::class")
-            .line(15)
-            .column(24)
-            .message("Multiline\nmessage");
-        stack_trace.to_text(&log, false, &mut text);
+        // All
+        let log = StackTraceBlock::new()
+            .file_location(TextBlock::new_plain("/path/to/\n/file.rs:15:24"))
+            .code_path(TextBlock::new_plain("crate::mod::\n::impl"))
+            .message(TextBlock::new_plain("this is a\nmessage"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
         assert_eq!(
             text,
-            "/path/to/file.test:15:24 at path::t o::class - Multiline\n    message"
+            "/path/to/ /file.rs:15:24(crate::mod:: ::impl) - this is a\nmessage"
         );
     }
 
     #[test]
-    fn test_ansi() {
-        // LOCATION
-        let mut text = String::new();
-        let log = Log::info();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test");
-        stack_trace.to_text(&log, true, &mut text);
+    fn test_styled() {
+        // Empty
+        let log = StackTraceBlock::new();
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
-        assert_eq!(text, "/path/to/file.test");
+        println!("{}", text);
+        assert_eq!(text, "<unknown location>");
 
-        // LOCATION + LINE
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test").line(15);
-        stack_trace.to_text(&log, true, &mut text);
+        // Location
+        let log =
+            StackTraceBlock::new().file_location(TextBlock::new_plain("/path/to/file.rs:15:24"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
-        assert_eq!(text, "/path/to/file.test:15");
+        println!("{}", text);
+        assert_eq!(text, "/path/to/file.rs:15:24");
 
-        // LOCATION + COLUMN
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test").column(24);
-        stack_trace.to_text(&log, true, &mut text);
+        // Inner path
+        let log = StackTraceBlock::new().code_path(TextBlock::new_plain("crate::mod::impl"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
-        assert_eq!(text, "/path/to/file.test:??:24");
-
-        // LOCATION + LINE + COLUMN
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test")
-            .line(15)
-            .column(24);
-        stack_trace.to_text(&log, true, &mut text);
-
-        assert_eq!(text, "/path/to/file.test:15:24");
-
-        // LOCATION + INNER_PATH
-        let mut text = String::new();
-        let stack_trace =
-            StackTraceBlock::new("/path/to/file.test").inner_path("path::t\no::class");
-        stack_trace.to_text(&log, true, &mut text);
-
+        println!("{}", text);
         assert_eq!(
             text,
-            format!(
-                "/path/to/file.test {} path::t o::class",
-                Style::new(LogLevel::info().color()).bold().paint("at"),
-            )
+            "<unknown location>\u{1b}[1;31m(\u{1b}[0mcrate::mod::impl\u{1b}[1;31m)\u{1b}[0m"
         );
 
-        // LOCATION + MESSAGE
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test").message("Multiline\nmessage");
-        stack_trace.to_text(&log, true, &mut text);
+        // Message
+        let log = StackTraceBlock::new().message(TextBlock::new_plain("this is a message"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
+        println!("{}", text);
         assert_eq!(
             text,
-            format!(
-                "/path/to/file.test {} Multiline\n    message",
-                Style::new(LogLevel::info().color()).bold().paint("-")
-            )
+            "<unknown location>\u{1b}[1;31m - \u{1b}[0mthis is a message"
         );
 
-        // LOCATION + ALL
-        let mut text = String::new();
-        let stack_trace = StackTraceBlock::new("/path/to/file.test")
-            .inner_path("path::t\no::class")
-            .line(15)
-            .column(24)
-            .message("Multiline\nmessage");
-        stack_trace.to_text(&log, true, &mut text);
+        // All
+        let log = StackTraceBlock::new()
+            .file_location(TextBlock::new_plain("/path/to/\n/file.rs:15:24"))
+            .code_path(TextBlock::new_plain("crate::mod::\n::impl"))
+            .message(TextBlock::new_plain("this is a\nmessage"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
+        println!("{}", text);
         assert_eq!(
             text,
-            format!(
-                "/path/to/file.test:15:24 {} path::t o::class {} Multiline\n    message",
-                Style::new(LogLevel::info().color()).bold().paint("at"),
-                Style::new(LogLevel::info().color()).bold().paint("-")
-            )
+            "/path/to/ /file.rs:15:24\u{1b}[1;31m(\u{1b}[0mcrate::mod:: ::impl\u{1b}[1;31m) - \u{1b}[0mthis is a\nmessage"
         );
     }
 }

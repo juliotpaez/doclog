@@ -170,13 +170,15 @@ impl<'a> Printer<'a> {
                             section.text.chars().all(|c| char::is_ascii_whitespace(&c));
 
                         // Print previous suffix and current prefix only if the style is different.
-                        if let Some(prev_style) = prev_style.take() {
-                            if prev_style != &section.style && !all_whitespace {
-                                prev_style.fmt_suffix(fmt)?;
+                        if !all_whitespace {
+                            if let Some(prev_style) = prev_style.take() {
+                                if prev_style != &section.style {
+                                    prev_style.fmt_suffix(fmt)?;
+                                    section.style.fmt_prefix(fmt)?;
+                                }
+                            } else {
                                 section.style.fmt_prefix(fmt)?;
                             }
-                        } else if !all_whitespace {
-                            section.style.fmt_prefix(fmt)?;
                         }
 
                         write!(fmt, "{}", section.text)?;

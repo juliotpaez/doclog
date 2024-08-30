@@ -1,16 +1,20 @@
-use crate::blocks::StackTraceBlock;
-use std::borrow::Cow;
-
+use crate::blocks::{StackTraceBlock, TextBlock};
 use crate::constants::{
-    BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, TOP_RIGHT_CORNER, VERTICAL_BAR, VERTICAL_RIGHT_BAR,
+    BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, RIGHT_ARROW, TOP_RIGHT_CORNER, VERTICAL_BAR,
+    VERTICAL_RIGHT_BAR,
 };
-use crate::utils::text::{color_bold_if, indent_text};
-use crate::Log;
+use crate::printer::{Printable, Printer, PrinterFormat};
+use crate::LogLevel;
+use const_format::concatcp;
+use std::borrow::Cow;
+use std::fmt::Display;
+use std::mem;
+use yansi::Style;
 
-/// A error stack block.
-#[derive(Debug, Clone, Eq, PartialEq)]
+/// An error stack block.
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct StackBlock<'a> {
-    message: Cow<'a, str>,
+    message: TextBlock<'a>,
     traces: Vec<StackTraceBlock<'a>>,
     cause: Option<Box<StackBlock<'a>>>,
     show_stack_numbers: bool,
@@ -19,44 +23,88 @@ pub struct StackBlock<'a> {
 impl<'a> StackBlock<'a> {
     // CONSTRUCTORS -----------------------------------------------------------
 
-    pub fn new(message: impl Into<Cow<'a, str>>) -> StackBlock<'a> {
-        StackBlock {
-            message: message.into(),
-            traces: vec![],
-            cause: None,
-            show_stack_numbers: true,
-        }
+    /// Creates a new empty [StackBlock].
+    #[inline(always)]
+    pub fn new() -> Self {
+        StackBlock::default()
     }
 
     // GETTERS ----------------------------------------------------------------
 
-    /// The message of the stack
-    pub fn get_message(&self) -> &Cow<'a, str> {
+    /// Returns the message.
+    #[inline(always)]
+    pub fn get_message(&self) -> &TextBlock<'a> {
         &self.message
     }
 
-    /// The traces of the stack.
-    pub fn get_traces(&self) -> &Vec<StackTraceBlock> {
+    /// Returns a mutable reference to the message.
+    #[inline(always)]
+    pub fn get_message_mut(&mut self) -> &mut TextBlock<'a> {
+        &mut self.message
+    }
+
+    /// Returns the traces.
+    #[inline(always)]
+    pub fn get_traces(&self) -> &[StackTraceBlock<'a>] {
         &self.traces
     }
 
-    /// The cause of the current error stack.
-    pub fn get_cause(&self) -> &Option<Box<StackBlock>> {
+    /// Returns a mutable reference to the traces.
+    #[inline(always)]
+    pub fn get_traces_mut(&mut self) -> &mut Vec<StackTraceBlock<'a>> {
+        &mut self.traces
+    }
+
+    /// Returns the cause.
+    #[inline(always)]
+    pub fn get_cause(&self) -> &Option<Box<StackBlock<'a>>> {
         &self.cause
     }
 
-    /// Whether to print the stack numbers in every trace or not.
+    /// Returns a mutable reference to the cause.
+    #[inline(always)]
+    pub fn get_cause_mut(&mut self) -> &mut Option<Box<StackBlock<'a>>> {
+        &mut self.cause
+    }
+
+    /// Returns whether to show stack numbers.
+    #[inline(always)]
     pub fn get_show_stack_numbers(&self) -> bool {
         self.show_stack_numbers
     }
 
     // SETTERS ----------------------------------------------------------------
 
-    pub fn message(mut self, message: Cow<'a, str>) -> Self {
+    /// Sets the message.
+    #[inline(always)]
+    pub fn message(mut self, message: TextBlock<'a>) -> Self {
         self.message = message;
         self
     }
 
+    /// Add a stack trace.
+    #[inline(always)]
+    pub fn add_stack_trace(mut self, stack_trace: StackTraceBlock<'a>) -> Self {
+        self.traces.push(stack_trace);
+        self
+    }
+
+    /// Sets the cause.
+    #[inline(always)]
+    pub fn cause(mut self, cause: StackBlock<'a>) -> Self {
+        self.cause = Some(Box::new(cause));
+        self
+    }
+
+    /// Removes the cause.
+    #[inline(always)]
+    pub fn clear_cause(mut self) -> Self {
+        self.cause = None;
+        self
+    }
+
+    /// Sets whether to show stack numbers.
+    #[inline(always)]
     pub fn show_stack_numbers(mut self, show_stack_numbers: bool) -> Self {
         self.show_stack_numbers = show_stack_numbers;
         self
@@ -64,165 +112,142 @@ impl<'a> StackBlock<'a> {
 
     // METHODS ----------------------------------------------------------------
 
-    /// Adds a trace to the block.
-    pub fn trace<F>(mut self, location: impl Into<Cow<'a, str>>, builder: F) -> Self
-    where
-        F: FnOnce(StackTraceBlock<'a>) -> StackTraceBlock<'a>,
-    {
-        let trace = StackTraceBlock::new(location);
-        let trace = builder(trace);
-        self.traces.push(trace);
-        self
-    }
-
-    /// Sets a cause to the block.
-    pub fn cause<F>(mut self, message: impl Into<Cow<'a, str>>, builder: F) -> Self
-    where
-        F: FnOnce(StackBlock<'a>) -> StackBlock<'a>,
-    {
-        let stack = StackBlock::new(message.into());
-        let stack = builder(stack);
-        self.cause = Some(Box::new(stack));
-        self
-    }
-
-    /// Clears the cause of the block.
-    pub fn clear_cause(mut self) -> Self {
-        self.cause = None;
-        self
-    }
-
-    /// Count traces of the stack an its cause recursively.
+    /// Count traces of the stack and its cause recursively.
     fn count_traces(&self) -> usize {
         self.traces.len() + self.cause.as_ref().map_or(0, |v| v.count_traces())
     }
 
-    pub(crate) fn to_text(&self, log: &Log, in_ansi: bool, buffer: &mut String) {
-        let max_trace_digits = format!("{}", self.count_traces()).len();
-        self.to_text_with_options(log, in_ansi, buffer, 0, max_trace_digits, false)
-    }
-
-    fn to_text_with_options(
+    /// Prints the stack block with the given options.
+    fn print_with_options(
         &self,
-        log: &Log<'a>,
-        in_ansi: bool,
-        buffer: &mut String,
+        printer: &mut Printer<'a>,
         initial_trace_number: usize,
         max_trace_digits: usize,
         is_cause: bool,
     ) {
-        let mut next_trace_number = 0;
-
-        let message = if is_cause {
-            indent_text(
-                self.get_message().as_ref(),
-                format!(
-                    "{}             ",
-                    color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
-                )
-                .as_str(),
-                false,
-            )
-        } else {
-            indent_text(
-                self.get_message().as_ref(),
-                format!(
-                    "{}  ",
-                    color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
-                )
-                .as_str(),
-                false,
-            )
-        };
-
-        // CAUSE
+        // Cause
         if is_cause {
-            buffer.push_str(&color_bold_if(
-                VERTICAL_BAR.to_string(),
-                log.level().color(),
-                in_ansi,
-            ));
-            buffer.push('\n');
-
-            buffer.push_str(&color_bold_if(
-                format!("{}{} Caused by:", VERTICAL_RIGHT_BAR, HORIZONTAL_BAR),
-                log.level().color(),
-                in_ansi,
-            ));
+            printer.push_styled_text(
+                concatcp!(
+                    VERTICAL_BAR,
+                    '\n',
+                    VERTICAL_RIGHT_BAR,
+                    HORIZONTAL_BAR,
+                    HORIZONTAL_BAR,
+                    HORIZONTAL_BAR,
+                    RIGHT_ARROW,
+                    " Caused by: "
+                ),
+                Style::new().bold().fg(printer.level.color()),
+            );
+        } else if self.message.is_empty() {
+            printer.push_styled_text(
+                concatcp!(BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, ' '),
+                Style::new().bold().fg(printer.level.color()),
+            );
         } else {
-            buffer.push_str(&color_bold_if(
-                format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR),
-                log.level().color(),
-                in_ansi,
-            ));
+            printer.push_styled_text(
+                concatcp!(BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, RIGHT_ARROW, ' '),
+                Style::new().bold().fg(printer.level.color()),
+            );
         }
-        buffer.push(' ');
-        buffer.push_str(message.as_str());
 
-        // TRACES
-        let trace_prefix = format!(
-            "{}  ",
-            color_bold_if(VERTICAL_BAR.to_string(), log.level().color(), in_ansi)
+        {
+            let mut message_printer = printer.derive();
+            self.message.print(&mut message_printer);
+
+            let prefix = TextBlock::new().add_styled_text(
+                if is_cause {
+                    concatcp!(VERTICAL_BAR, "     ")
+                } else {
+                    concatcp!(VERTICAL_BAR, "   ")
+                },
+                Style::new().bold().fg(printer.level.color()),
+            );
+
+            message_printer.indent(prefix.get_sections(), false);
+            printer.append(message_printer);
+        }
+
+        // Traces
+        let trace_prefix = TextBlock::new().add_styled_text(
+            concatcp!(VERTICAL_BAR, "  "),
+            Style::new().bold().fg(printer.level.color()),
         );
-        let full_trace_prefix = if self.show_stack_numbers {
-            format!("{}{}", trace_prefix, " ".repeat(max_trace_digits + 3))
-        } else {
-            trace_prefix.clone()
-        };
+        let full_trace_prefix = trace_prefix.clone().add_styled_text(
+            " ".repeat(max_trace_digits + 2),
+            Style::new().bold().fg(printer.level.color()),
+        );
 
-        let mut trace_buffer = String::new();
+        let mut trace_printer = printer.derive();
+        let mut next_trace_number = 0;
         for trace in self.traces.iter() {
-            buffer.push('\n');
-            buffer.push_str(trace_prefix.as_str());
+            printer.push_plain_text(Cow::Borrowed("\n"));
+            trace_prefix.print(printer);
+
+            let number = self.traces.len() - next_trace_number + initial_trace_number;
+            next_trace_number += 1;
 
             if self.show_stack_numbers {
-                let number = self.traces.len() - next_trace_number + initial_trace_number;
-                next_trace_number += 1;
-
-                buffer.push_str(&color_bold_if(
-                    format!("[{:>width$}]", number, width = max_trace_digits),
-                    log.level().color(),
-                    in_ansi,
-                ));
-                buffer.push(' ');
+                printer.push_styled_text(
+                    format!("[{:>width$}] ", number, width = max_trace_digits),
+                    Style::new().bold().fg(printer.level.color()),
+                );
+            } else {
+                printer.push_styled_text(" at ", Style::new().bold().fg(printer.level.color()));
             }
 
-            trace_buffer.clear();
-            trace.to_text(log, in_ansi, &mut trace_buffer);
-            buffer.push_str(indent_text(&trace_buffer, full_trace_prefix.as_str(), false).as_str());
+            trace.print(&mut trace_printer);
+            trace_printer.indent(full_trace_prefix.get_sections(), false);
+            printer.append(mem::replace(&mut trace_printer, printer.derive()));
         }
 
-        // CAUSE
+        // Cause
         if let Some(cause) = &self.cause {
-            buffer.push('\n');
-            cause.to_text_with_options(
-                log,
-                in_ansi,
-                buffer,
+            printer.push_plain_text("\n");
+            cause.print_with_options(
+                printer,
                 next_trace_number + initial_trace_number,
                 max_trace_digits,
                 true,
             );
         }
 
-        // END
+        // Final line
         if !is_cause {
-            buffer.push('\n');
-            buffer.push_str(&color_bold_if(
-                format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR),
-                log.level().color(),
-                in_ansi,
-            ));
+            printer.push_styled_text(
+                concatcp!('\n', TOP_RIGHT_CORNER, HORIZONTAL_BAR),
+                Style::new().bold().fg(printer.level.color()),
+            );
         }
     }
 
-    pub fn make_owned<'b>(&self) -> StackBlock<'b> {
+    /// Makes this type owned, i.e. changing the lifetime to `'static`.
+    pub fn make_owned(self) -> StackBlock<'static> {
         StackBlock {
-            message: Cow::Owned(self.message.to_string()),
-            traces: self.traces.iter().map(|v| v.make_owned()).collect(),
-            cause: self.cause.as_ref().map(|v| Box::new(v.make_owned())),
+            message: self.message.make_owned(),
+            traces: self.traces.into_iter().map(|v| v.make_owned()).collect(),
+            cause: self.cause.map(|v| Box::new(v.make_owned())),
             show_stack_numbers: self.show_stack_numbers,
         }
+    }
+}
+
+impl<'a> Printable<'a> for StackBlock<'a> {
+    fn print<'s>(&'s self, printer: &mut Printer<'a>)
+    where
+        'a: 's,
+    {
+        let max_trace_digits = format!("{}", self.count_traces()).len();
+        self.print_with_options(printer, 0, max_trace_digits, false)
+    }
+}
+
+impl<'a> Display for StackBlock<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut printer = Printer::new(LogLevel::trace(), PrinterFormat::Plain);
+        self.print(&mut printer);
+        printer.fmt(f, PrinterFormat::Plain)
     }
 }
 
@@ -232,413 +257,387 @@ impl<'a> StackBlock<'a> {
 
 #[cfg(test)]
 mod tests {
-    use yansi::Style;
-
-    use crate::{Log, LogLevel};
-
     use super::*;
 
     #[test]
     fn test_plain() {
-        // MESSAGE
-        let log = Log::info().stack("This is\na message", |stack| {
-            stack.show_stack_numbers(false)
-        });
-        let text = log.to_plain_text();
+        // Empty
+        let log = StackBlock::new();
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
-        assert_eq!(
-            text,
-            format!(
-                "{}{} This is\n{}  a message\n{}{}",
-                BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, VERTICAL_BAR, TOP_RIGHT_CORNER, HORIZONTAL_BAR
+        assert_eq!(text, "╭─ \n╰─");
+
+        // Message
+        let log = StackBlock::new().message(TextBlock::new_plain("This is\na message"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
+
+        assert_eq!(text, "╭─▶ This is\n│   a message\n╰─");
+
+        // Traces without numbers
+        let log = StackBlock::new()
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
             )
-        );
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            );
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
-        // MESSAGE + SHOW_NUMBERS
-        let log = Log::info().stack("This is\na message", |stack| stack.show_stack_numbers(true));
-        let text = log.to_plain_text();
+        assert_eq!(text, "╭─ \n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
 
-        assert_eq!(
-            text,
-            format!(
-                "{}{} This is\n{}  a message\n{}{}",
-                BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR, VERTICAL_BAR, TOP_RIGHT_CORNER, HORIZONTAL_BAR
+        // Traces with numbers
+        let log = StackBlock::new()
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
             )
-        );
-
-        // MESSAGE + TRACES
-        let log = Log::info().stack("Message", |stack| {
-            stack
-                .show_stack_numbers(false)
-                .trace("/path/to/file.test", |trace| trace)
-                .trace("/path/to/file2.test", |trace| trace)
-        });
-        let text = log.to_plain_text();
-
-        assert_eq!(
-            text,
-            format!(
-                "{}{} Message\n{}  /path/to/file.test\n{}  /path/to/file2.test\n{}{}",
-                BOTTOM_RIGHT_CORNER,
-                HORIZONTAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                TOP_RIGHT_CORNER,
-                HORIZONTAL_BAR
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
             )
-        );
+            .show_stack_numbers(true);
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
-        // MESSAGE + TRACES + SHOW_NUMBERS
-        let log = Log::info().stack("Message", |stack| {
-            stack
-                .show_stack_numbers(true)
-                .trace("file10", |trace| trace)
-                .trace("file09", |trace| trace)
-                .trace("file08", |trace| trace)
-                .trace("file07", |trace| trace)
-                .trace("file06", |trace| trace)
-                .trace("file05", |trace| trace)
-                .trace("file04", |trace| trace)
-                .trace("file03", |trace| trace)
-                .trace("file02", |trace| trace)
-                .trace("file01", |trace| trace)
-        });
-        let text = log.to_plain_text();
+        assert_eq!(text, "╭─ \n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
 
-        assert_eq!(
-            text,
-            format!(
-                "{}{} Message\n{}  [10] file10\n{}  [ 9] file09\n{}  [ 8] file08\n{}  [ 7] file07\n{}  [ 6] file06\n{}  [ 5] file05\n{}  [ 4] file04\n{}  [ 3] file03\n{}  [ 2] file02\n{}  [ 1] file01\n{}{}",
-                BOTTOM_RIGHT_CORNER,
-                HORIZONTAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                TOP_RIGHT_CORNER,
-                HORIZONTAL_BAR
+        // All
+        let log = StackBlock::new()
+            .message(TextBlock::new_plain("This is\na message"))
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
             )
-        );
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            )
+            .show_stack_numbers(true);
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
+
+        assert_eq!(text, "╭─▶ This is\n│   a message\n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
     }
 
     #[test]
-    fn test_plain_with_cause() {
-        // MESSAGE
-        let log = Log::info().stack("", |stack| stack.cause("This is\na message", |stack| stack));
-        let text = log.to_plain_text();
+    fn test_styled() {
+        // Empty
+        let log = StackBlock::new();
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
-        assert_eq!(
-            text,
-            format!(
-                "{}{} \n{}\n{}{} Caused by: This is\n{}             a message\n{}{}",
-                BOTTOM_RIGHT_CORNER,
-                HORIZONTAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_RIGHT_BAR,
-                HORIZONTAL_BAR,
-                VERTICAL_BAR,
-                TOP_RIGHT_CORNER,
-                HORIZONTAL_BAR
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─ \n╰─\u{1b}[0m");
+
+        // Message
+        let log = StackBlock::new().message(TextBlock::new_plain("This is\na message"));
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mThis is\n\u{1b}[1;31m│   \u{1b}[0ma message\n\u{1b}[1;31m╰─\u{1b}[0m");
+
+        // Traces without numbers
+        let log = StackBlock::new()
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
             )
-        );
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            );
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
 
-        // MESSAGE + TRACES
-        let log = Log::info().stack("", |stack| {
-            stack
-                .show_stack_numbers(true)
-                .trace("File2", |trace| trace)
-                .trace("File1", |trace| trace)
-                .cause("Cause 1", |stack| {
-                    stack
-                        .trace("File3", |trace| trace)
-                        .cause("Cause 2", |stack| stack.trace("File4", |trace| trace))
-                })
-        });
-        let text = log.to_plain_text();
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─ \n│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
 
-        assert_eq!(
-            text,
-            format!(
-                "{}{} \n{}  [2] File2\n{}  [1] File1\n{}\n{}{} Caused by: Cause 1\n{}  [3] File3\n{}\n{}{} Caused by: Cause 2\n{}  [4] File4\n{}{}",
-                BOTTOM_RIGHT_CORNER,
-                HORIZONTAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_RIGHT_BAR,
-                HORIZONTAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_BAR,
-                VERTICAL_RIGHT_BAR,
-                HORIZONTAL_BAR,
-                VERTICAL_BAR,
-                TOP_RIGHT_CORNER,
-                HORIZONTAL_BAR
+        // Traces with numbers
+        let log = StackBlock::new()
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
             )
-        );
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            )
+            .show_stack_numbers(true);
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─ \n│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
+
+        // All
+        let log = StackBlock::new()
+            .message(TextBlock::new_plain("This is\na message"))
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
+            )
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            )
+            .show_stack_numbers(true);
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mThis is\n\u{1b}[1;31m│   \u{1b}[0ma message\n\u{1b}[1;31m│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
     }
 
     #[test]
-    fn test_ansi() {
-        // MESSAGE
-        let log = Log::info().stack("This is\na message", |stack| {
-            stack.show_stack_numbers(false)
-        });
-        let text = log.to_ansi_text();
-
-        assert_eq!(
-            text,
-            format!(
-                "{} This is\n{}  a message\n{}",
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR)),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR)),
+    fn test_plain_with_caused_by() {
+        let cause = StackBlock::new()
+            .message(TextBlock::new_plain("This is\na message"))
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
             )
-        );
-
-        // MESSAGE + SHOW_NUMBERS
-        let log = Log::info().stack("This is\na message", |stack| stack.show_stack_numbers(true));
-        let text = log.to_ansi_text();
-
-        assert_eq!(
-            text,
-            format!(
-                "{} This is\n{}  a message\n{}",
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR)),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR)),
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
             )
-        );
+            .show_stack_numbers(true);
+        let cause2 = cause.clone().show_stack_numbers(false).cause(cause.clone());
 
-        // MESSAGE + TRACES
-        let log = Log::info().stack("Message", |stack| {
-            stack
-                .show_stack_numbers(false)
-                .trace("/path/to/file.test", |trace| trace)
-                .trace("/path/to/file2.test", |trace| trace)
-        });
-        let text = log.to_ansi_text();
+        // Empty
+        let log = StackBlock::new().cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
 
-        assert_eq!(
-            text,
-            format!(
-                "{} Message\n{}  /path/to/file.test\n{}  /path/to/file2.test\n{}",
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR)),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR)),
+        assert_eq!(text, "╭─ \n│\n├───▶ Caused by: This is\n│     a message\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n│\n├───▶ Caused by: This is\n│     a message\n│  [4] /a/b/c(crate::x) - This is a \n│      message\n│  [3] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
+
+        // Message
+        let log = StackBlock::new()
+            .message(TextBlock::new_plain("This is\na message"))
+            .cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
+
+        assert_eq!(text, "╭─▶ This is\n│   a message\n│\n├───▶ Caused by: This is\n│     a message\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n│\n├───▶ Caused by: This is\n│     a message\n│  [4] /a/b/c(crate::x) - This is a \n│      message\n│  [3] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
+
+        // Traces without numbers
+        let log = StackBlock::new()
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
             )
-        );
-
-        // MESSAGE + TRACES + SHOW_NUMBERS
-        let log = Log::info().stack("Message", |stack| {
-            stack
-                .show_stack_numbers(true)
-                .trace("file10", |trace| trace)
-                .trace("file09", |trace| trace)
-                .trace("file08", |trace| trace)
-                .trace("file07", |trace| trace)
-                .trace("file06", |trace| trace)
-                .trace("file05", |trace| trace)
-                .trace("file04", |trace| trace)
-                .trace("file03", |trace| trace)
-                .trace("file02", |trace| trace)
-                .trace("file01", |trace| trace)
-        });
-        let text = log.to_ansi_text();
-
-        assert_eq!(
-            text,
-            format!(
-                "{} Message\n{}  {} file10\n{}  {} file09\n{}  {} file08\n{}  {} file07\n{}  {} file06\n{}  {} file05\n{}  {} file04\n{}  {} file03\n{}  {} file02\n{}  {} file01\n{}",
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR)),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[10]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 9]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 8]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 7]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 6]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 5]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 4]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 3]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 2]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[ 1]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR)),
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
             )
-        );
+            .cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
+
+        assert_eq!(text, "╭─ \n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n│\n├───▶ Caused by: This is\n│     a message\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n│\n├───▶ Caused by: This is\n│     a message\n│  [6] /a/b/c(crate::x) - This is a \n│      message\n│  [5] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
+
+        // Traces with numbers
+        let log = StackBlock::new()
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
+            )
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            )
+            .show_stack_numbers(true)
+            .cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
+
+        assert_eq!(text, "╭─ \n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1] /a/b/c/2(crate::x::2) - This is a \n│      message2\n│\n├───▶ Caused by: This is\n│     a message\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n│\n├───▶ Caused by: This is\n│     a message\n│  [6] /a/b/c(crate::x) - This is a \n│      message\n│  [5] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
+
+        // All
+        let log = StackBlock::new()
+            .message(TextBlock::new_plain("This is\na message"))
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
+            )
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            )
+            .show_stack_numbers(true)
+            .cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
+            .to_string();
+
+        assert_eq!(text, "╭─▶ This is\n│   a message\n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1] /a/b/c/2(crate::x::2) - This is a \n│      message2\n│\n├───▶ Caused by: This is\n│     a message\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n│\n├───▶ Caused by: This is\n│     a message\n│  [6] /a/b/c(crate::x) - This is a \n│      message\n│  [5] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
     }
 
     #[test]
-    fn test_ansi_with_cause() {
-        // MESSAGE
-        let log = Log::info().stack("", |stack| stack.cause("This is\na message", |stack| stack));
-        let text = log.to_ansi_text();
-
-        assert_eq!(
-            text,
-            format!(
-                "{} \n{}\n{} This is\n{}             a message\n{}",
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR)),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color()).bold().paint(format!(
-                    "{}{} Caused by:",
-                    VERTICAL_RIGHT_BAR, HORIZONTAL_BAR
-                )),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR)),
+    fn test_styled_with_caused_by() {
+        let cause = StackBlock::new()
+            .message(TextBlock::new_plain("This is\na message"))
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
             )
-        );
-
-        // MESSAGE + TRACES
-        let log = Log::info().stack("", |stack| {
-            stack
-                .show_stack_numbers(true)
-                .trace("File2", |trace| trace)
-                .trace("File1", |trace| trace)
-                .cause("Cause 1", |stack| {
-                    stack
-                        .trace("File3", |trace| trace)
-                        .cause("Cause 2", |stack| stack.trace("File4", |trace| trace))
-                })
-        });
-        let text = log.to_ansi_text();
-
-        assert_eq!(
-            text,
-            format!(
-                "{} \n{}  {} File2\n{}  {} File1\n{}\n{} Cause 1\n{}  {} File3\n{}\n{} Cause 2\n{}  {} File4\n{}",
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", BOTTOM_RIGHT_CORNER, HORIZONTAL_BAR)),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[2]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[1]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color()).bold().paint(format!(
-                    "{}{} Caused by:",
-                    VERTICAL_RIGHT_BAR, HORIZONTAL_BAR
-                )),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[3]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color()).bold().paint(format!(
-                    "{}{} Caused by:",
-                    VERTICAL_RIGHT_BAR, HORIZONTAL_BAR
-                )),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(VERTICAL_BAR),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint("[4]"),
-                Style::new(LogLevel::info().color())
-                    .bold()
-                    .paint(format!("{}{}", TOP_RIGHT_CORNER, HORIZONTAL_BAR)),
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
             )
-        );
+            .show_stack_numbers(true);
+        let cause2 = cause.clone().show_stack_numbers(false).cause(cause.clone());
+
+        // Empty
+        let log = StackBlock::new().cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─ \n│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│  [4] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [3] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
+
+        // Message
+        let log = StackBlock::new()
+            .message(TextBlock::new_plain("This is\na message"))
+            .cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mThis is\n\u{1b}[1;31m│   \u{1b}[0ma message\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│  [4] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [3] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
+
+        // Traces without numbers
+        let log = StackBlock::new()
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
+            )
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            )
+            .cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─ \n│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
+
+        // Traces with numbers
+        let log = StackBlock::new()
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
+            )
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            )
+            .show_stack_numbers(true)
+            .cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─ \n│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
+
+        // All
+        let log = StackBlock::new()
+            .message(TextBlock::new_plain("This is\na message"))
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message"))
+                    .file_location(TextBlock::new_plain("/a/b/c"))
+                    .code_path(TextBlock::new_plain("crate::x")),
+            )
+            .add_stack_trace(
+                StackTraceBlock::new()
+                    .message(TextBlock::new_plain("This is a \n message2"))
+                    .file_location(TextBlock::new_plain("/a/b/c/2"))
+                    .code_path(TextBlock::new_plain("crate::x::2")),
+            )
+            .show_stack_numbers(true)
+            .cause(cause2.clone());
+        let text = log
+            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mThis is\n\u{1b}[1;31m│   \u{1b}[0ma message\n\u{1b}[1;31m│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m│\n├───▶ Caused by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
     }
 }
