@@ -29,6 +29,7 @@ pub struct CodeBlock<'a> {
     previous_lines: usize,
     next_lines: usize,
     middle_lines: usize,
+    align_messages: bool,
 }
 
 impl<'a> CodeBlock<'a> {
@@ -47,6 +48,7 @@ impl<'a> CodeBlock<'a> {
             previous_lines: 0,
             next_lines: 0,
             middle_lines: 0,
+            align_messages: false,
         }
     }
 
@@ -139,6 +141,12 @@ impl<'a> CodeBlock<'a> {
         self.middle_lines
     }
 
+    /// Returns whether to align messages or not.
+    #[inline(always)]
+    pub fn get_align_messages(&self) -> bool {
+        self.align_messages
+    }
+
     // SETTERS ----------------------------------------------------------------
 
     /// Sets the title.
@@ -194,6 +202,13 @@ impl<'a> CodeBlock<'a> {
     #[inline(always)]
     pub fn middle_lines(mut self, middle_lines: usize) -> Self {
         self.middle_lines = middle_lines;
+        self
+    }
+
+    /// Sets whether to align messages or not.
+    #[inline(always)]
+    pub fn align_messages(mut self, align_messages: bool) -> Self {
+        self.align_messages = align_messages;
         self
     }
 
@@ -470,7 +485,7 @@ impl<'a> CodeBlock<'a> {
 
             // Show highlighted sections.
             {
-                let last_line = self.sections.first().unwrap().start.line;
+                let mut last_line = self.sections.first().unwrap().start.line;
                 let mut sections: &[CodeSection] = &self.sections;
                 let mut current_line_sections = Vec::new();
 
@@ -485,7 +500,7 @@ impl<'a> CodeBlock<'a> {
 
                     // Print middle lines.
                     let middle_lines = (line_start_cursor.line - last_line).saturating_sub(1);
-                    if middle_lines > 1 {
+                    if middle_lines >= 1 {
                         if self.middle_lines >= middle_lines {
                             // Print lines.
                             let mut next_line_start_cursor = line_start_cursor
@@ -534,6 +549,7 @@ impl<'a> CodeBlock<'a> {
                             printer.push_styled_text(Cow::Borrowed("···    "), Style::new().bold());
                         }
                     }
+                    last_line = line_start_cursor.line;
 
                     // Print code line.
                     printer.push_styled_text(
@@ -593,43 +609,109 @@ impl<'a> CodeBlock<'a> {
                     }
 
                     // Print underline.
-                    printer.push_plain_text(build_whitespace_string(1, max_line_digits + 1));
-                    printer.push_styled_text(
-                        if current_line_sections.first().unwrap().is_multiline_end {
-                            Cow::Borrowed(concatcp!(VERTICAL_BAR, "  "))
-                        } else {
-                            Cow::Borrowed(concatcp!(VERTICAL_BAR, "    "))
-                        },
-                        Style::new().bold(),
-                    );
+                    {
+                        let mut prefix = TextBlock::new()
+                            .add_plain_text(build_space_string(max_line_digits + 1))
+                            .add_styled_text(
+                                Cow::Borrowed(concatcp!(VERTICAL_BAR)),
+                                Style::new().bold(),
+                            );
 
-                    next_color = self.secondary_color;
-                    previous_cursor = line_start_cursor;
+                        printer.push_plain_text(build_whitespace_string(1, max_line_digits + 1));
+                        printer.push_styled_text(
+                            if current_line_sections.first().unwrap().is_multiline_end {
+                                Cow::Borrowed(concatcp!(VERTICAL_BAR, "  "))
+                            } else {
+                                Cow::Borrowed(concatcp!(VERTICAL_BAR, "    "))
+                            },
+                            Style::new().bold(),
+                        );
 
-                    for section in &current_line_sections {
-                        // Print previous content.
-                        printer.push_plain_text(build_space_string(
-                            section.start.char_offset - previous_cursor.char_offset,
-                        ));
+                        next_color = self.secondary_color;
+                        previous_cursor = line_start_cursor;
 
-                        next_color =
-                            section
-                                .color
-                                .unwrap_or(if next_color == self.secondary_color {
-                                    printer.level.color()
+                        let mut space_count = 4;
+
+                        for (section_index, section) in current_line_sections.iter().enumerate() {
+                            // Print previous content.
+                            printer.push_plain_text(build_space_string(
+                                section.start.char_offset - previous_cursor.char_offset,
+                            ));
+                            space_count += section.start.char_offset - previous_cursor.char_offset;
+
+                            if !section.message.is_empty() {
+                                prefix = prefix.add_plain_text(build_space_string(space_count));
+                                space_count = 0;
+                            }
+
+                            next_color =
+                                section
+                                    .color
+                                    .unwrap_or(if next_color == self.secondary_color {
+                                        printer.level.color()
+                                    } else {
+                                        self.secondary_color
+                                    });
+
+                            if !section.message.is_empty()
+                                && section_index == current_line_sections.len() - 1
+                            {
+                                section.print_underline_with_message(printer, next_color);
+                                prefix = prefix
+                                    .add_plain_text(build_space_string(section.char_len() + 3));
+
+                                let mut message_printer = printer.derive();
+                                section.message.print(&mut message_printer);
+                                message_printer.indent(prefix.get_sections(), false);
+                                printer.append(message_printer);
+                            } else {
+                                if section.message.is_empty() {
+                                    space_count += section.char_len();
                                 } else {
-                                    self.secondary_color
-                                });
+                                    prefix = prefix.add_styled_text(
+                                        Cow::Borrowed(concatcp!(VERTICAL_BAR)),
+                                        Style::new().bold().fg(next_color),
+                                    );
 
-                        section.print_underline(printer, self, next_color);
-                        previous_cursor = section.end;
+                                    space_count += section.char_len() - 1;
+                                }
+
+                                section.print_underline(printer, next_color);
+                            }
+                            previous_cursor = section.end;
+                        }
                     }
 
                     // Print message lines.
+                    let alignment = if self.align_messages {
+                        current_line_sections
+                            .iter()
+                            .rev()
+                            .find(|v| !v.message.is_empty())
+                            .map(|v| v.start.char_offset + 1)
+                    } else {
+                        None
+                    };
+
+                    let current_line_sections_until_last_message = if let Some((index, _)) =
+                        current_line_sections
+                            .iter()
+                            .enumerate()
+                            .rev()
+                            .find(|(i, v)| !v.message.is_empty())
+                    {
+                        &current_line_sections[..index + 1]
+                    } else {
+                        &[]
+                    };
+
                     let number_of_messages = current_line_sections
                         .iter()
                         .filter(|v| !v.message.is_empty())
-                        .count();
+                        .count()
+                        .saturating_sub(
+                            !current_line_sections.last().unwrap().message.is_empty() as usize
+                        );
 
                     for row in 0..number_of_messages {
                         printer.push_plain_text(Cow::Borrowed("\n"));
@@ -643,12 +725,10 @@ impl<'a> CodeBlock<'a> {
                         next_color = self.secondary_color;
                         previous_cursor = line_start_cursor;
 
-                        // TODO: add option to align.
-
                         let mut space_count = 4;
-
                         let mut current_message_index = number_of_messages;
-                        for section in &current_line_sections {
+
+                        for (section_index, section) in current_line_sections.iter().enumerate() {
                             // Add previous content to the space count.
                             space_count += section.start.char_offset - previous_cursor.char_offset;
 
@@ -671,17 +751,45 @@ impl<'a> CodeBlock<'a> {
                             } else {
                                 if row + 1 == current_message_index {
                                     prefix.print(printer);
-                                    printer.push_styled_text(
-                                        Cow::Borrowed(concatcp!(
-                                            TOP_RIGHT_CORNER,
-                                            HORIZONTAL_BAR,
-                                            HORIZONTAL_BAR,
-                                            ' '
-                                        )),
-                                        Style::new().bold().fg(next_color),
-                                    );
 
-                                    prefix = prefix.add_plain_text("    ");
+                                    if let Some(alignment) = alignment {
+                                        let forward_cursors =
+                                            current_line_sections_until_last_message
+                                                .iter()
+                                                .skip(section_index)
+                                                .filter(|v| v.is_cursor())
+                                                .count();
+
+                                        printer.push_styled_text(
+                                            Cow::Owned(format!(
+                                                "{TOP_RIGHT_CORNER}{} ",
+                                                concatcp!(HORIZONTAL_BAR).repeat(
+                                                    (alignment - section.start.char_offset)
+                                                        + forward_cursors
+                                                        + 1
+                                                )
+                                            )),
+                                            Style::new().bold().fg(next_color),
+                                        );
+
+                                        prefix = prefix.add_plain_text(build_space_string(
+                                            (alignment - section.start.char_offset)
+                                                + forward_cursors
+                                                + 3,
+                                        ));
+                                    } else {
+                                        printer.push_styled_text(
+                                            Cow::Borrowed(concatcp!(
+                                                TOP_RIGHT_CORNER,
+                                                HORIZONTAL_BAR,
+                                                HORIZONTAL_BAR,
+                                                ' '
+                                            )),
+                                            Style::new().bold().fg(next_color),
+                                        );
+
+                                        prefix = prefix.add_plain_text("    ");
+                                    }
 
                                     let mut message_printer = printer.derive();
                                     section.message.print(&mut message_printer);
@@ -809,6 +917,7 @@ impl<'a> CodeBlock<'a> {
             previous_lines: self.previous_lines,
             next_lines: self.next_lines,
             middle_lines: self.middle_lines,
+            align_messages: self.align_messages,
         }
     }
 }
@@ -880,6 +989,8 @@ mod tests {
             // .highlight_section(36..41, None)
             // // Line 8
             // .highlight_section(52..58, None)
+            // .highlight_cursor(58, None)
+            // .highlight_cursor(59, None)
             // Line 3
             .highlight_section_message(14..15, None, "This is\na message")
             .highlight_cursor_message(15, None, "This is\na message")
@@ -892,10 +1003,13 @@ mod tests {
             .highlight_section_message(36..41, None, "This is\na message")
             // Line 8
             .highlight_section_message(52..58, None, "This is\na message")
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
             // .previous_lines(1)
             // .next_lines(1)
             // .middle_lines(50)
-            .show_new_line_chars(true)
+            .show_new_line_chars(false)
+            .align_messages(false)
             .print_to_string(LogLevel::error(), PrinterFormat::Styled)
             .to_string();
 

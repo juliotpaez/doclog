@@ -1,8 +1,8 @@
 use crate::blocks::code::CodeBlock;
 use crate::blocks::TextBlock;
 use crate::constants::{
-    HORIZONTAL_BAR, HORIZONTAL_BOTTOM_BAR, MIDDLE_DOT, NEW_LINE_LEFT, RIGHT_ARROW, TOP_LEFT_CORNER,
-    TOP_RIGHT_CORNER, UP_POINTER, VERTICAL_BAR, VERTICAL_RIGHT_BAR,
+    HORIZONTAL_BAR, HORIZONTAL_BOTTOM_BAR, HORIZONTAL_TOP_BAR, MIDDLE_DOT, NEW_LINE_LEFT,
+    RIGHT_ARROW, TOP_LEFT_CORNER, TOP_RIGHT_CORNER, UP_POINTER, VERTICAL_BAR, VERTICAL_RIGHT_BAR,
 };
 use crate::printer::Printer;
 use crate::utils::cursor::Cursor;
@@ -96,12 +96,7 @@ impl<'a> CodeSection<'a> {
     }
 
     /// Prints the actual code of the section.
-    pub(crate) fn print_underline(
-        &self,
-        printer: &mut Printer<'a>,
-        block: &CodeBlock<'a>,
-        next_color: Color,
-    ) {
+    pub(crate) fn print_underline(&self, printer: &mut Printer<'a>, next_color: Color) {
         // Print start multiline connection.
         if self.is_multiline_start {
             printer.push_styled_text(
@@ -157,6 +152,48 @@ impl<'a> CodeSection<'a> {
                 } else {
                     VERTICAL_RIGHT_BAR
                 },
+                concatcp!(HORIZONTAL_BAR).repeat(self.char_len() - 2)
+            ),
+            Style::new().bold().fg(next_color),
+        );
+    }
+
+    /// Prints the actual code of the section.
+    pub(crate) fn print_underline_with_message(
+        &self,
+        printer: &mut Printer<'a>,
+        next_color: Color,
+    ) {
+        // Print start multiline connection.
+        if self.is_multiline_start {
+            panic!("Multiline start not supported with message.");
+        }
+
+        // Print end multiline connection.
+        if self.is_multiline_end {
+            printer.push_styled_text(
+                format!(
+                    "{RIGHT_ARROW}{}{HORIZONTAL_TOP_BAR}{HORIZONTAL_BAR}{HORIZONTAL_BAR} ",
+                    concatcp!(HORIZONTAL_BAR).repeat(self.char_len())
+                ),
+                Style::new().bold().fg(next_color),
+            );
+            return;
+        }
+
+        // Print single character.
+        if self.char_len() == 1 {
+            printer.push_styled_text(
+                concatcp!(TOP_RIGHT_CORNER, HORIZONTAL_BAR, HORIZONTAL_BAR, ' '),
+                Style::new().bold().fg(next_color),
+            );
+            return;
+        }
+
+        // Print multiple characters.
+        printer.push_styled_text(
+            format!(
+                "{TOP_RIGHT_CORNER}{}{HORIZONTAL_TOP_BAR}{HORIZONTAL_BAR}{HORIZONTAL_BAR} ",
                 concatcp!(HORIZONTAL_BAR).repeat(self.char_len() - 2)
             ),
             Style::new().bold().fg(next_color),
