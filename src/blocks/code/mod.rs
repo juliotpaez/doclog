@@ -592,7 +592,7 @@ impl<'a> CodeBlock<'a> {
                         }
                     }
 
-                    // TODO Print underline.
+                    // Print underline.
                     printer.push_plain_text(build_whitespace_string(1, max_line_digits + 1));
                     printer.push_styled_text(
                         if current_line_sections.first().unwrap().is_multiline_end {
@@ -623,6 +623,84 @@ impl<'a> CodeBlock<'a> {
 
                         section.print_underline(printer, self, next_color);
                         previous_cursor = section.end;
+                    }
+
+                    // Print message lines.
+                    let number_of_messages = current_line_sections
+                        .iter()
+                        .filter(|v| !v.message.is_empty())
+                        .count();
+
+                    for row in 0..number_of_messages {
+                        printer.push_plain_text(Cow::Borrowed("\n"));
+                        let mut prefix = TextBlock::new()
+                            .add_plain_text(build_space_string(max_line_digits + 1))
+                            .add_styled_text(
+                                Cow::Borrowed(concatcp!(VERTICAL_BAR)),
+                                Style::new().bold(),
+                            );
+
+                        next_color = self.secondary_color;
+                        previous_cursor = line_start_cursor;
+
+                        // TODO: add option to align.
+
+                        let mut space_count = 4;
+
+                        let mut current_message_index = number_of_messages;
+                        for section in &current_line_sections {
+                            // Add previous content to the space count.
+                            space_count += section.start.char_offset - previous_cursor.char_offset;
+
+                            if !section.message.is_empty() {
+                                prefix = prefix.add_plain_text(build_space_string(space_count));
+                                space_count = 0;
+                            }
+
+                            next_color =
+                                section
+                                    .color
+                                    .unwrap_or(if next_color == self.secondary_color {
+                                        printer.level.color()
+                                    } else {
+                                        self.secondary_color
+                                    });
+
+                            if section.message.is_empty() {
+                                space_count += section.char_len();
+                            } else {
+                                if row + 1 == current_message_index {
+                                    prefix.print(printer);
+                                    printer.push_styled_text(
+                                        Cow::Borrowed(concatcp!(
+                                            TOP_RIGHT_CORNER,
+                                            HORIZONTAL_BAR,
+                                            HORIZONTAL_BAR,
+                                            ' '
+                                        )),
+                                        Style::new().bold().fg(next_color),
+                                    );
+
+                                    prefix = prefix.add_plain_text("    ");
+
+                                    let mut message_printer = printer.derive();
+                                    section.message.print(&mut message_printer);
+                                    message_printer.indent(prefix.get_sections(), false);
+                                    printer.append(message_printer);
+                                    break;
+                                }
+
+                                prefix = prefix.add_styled_text(
+                                    Cow::Borrowed(concatcp!(VERTICAL_BAR)),
+                                    Style::new().bold().fg(next_color),
+                                );
+
+                                space_count += section.char_len() - 1;
+                                current_message_index -= 1;
+                            }
+
+                            previous_cursor = section.end;
+                        }
                     }
                 }
             }
@@ -690,202 +768,6 @@ impl<'a> CodeBlock<'a> {
                 }
             }
         }
-
-        // if let Some(title) = &self.title {
-        //     let title = if self.file_path.is_some() {
-        //         indent_text(
-        //             title,
-        //             &color_bold_if(
-        //                 format!("{}{}  ", VERTICAL_BAR, VERTICAL_BAR),
-        //                 log.level().color(),
-        //                 in_ansi,
-        //             ),
-        //             false,
-        //         )
-        //     } else {
-        //         indent_text(
-        //             title,
-        //             &color_bold_if(format!("{}  ", VERTICAL_BAR), log.level().color(), in_ansi),
-        //             false,
-        //         )
-        //     };
-        //     buffer.push(' ');
-        //     buffer.push_str(title.as_str());
-        // }
-        //
-        // // FILE
-        // if let Some(file_path) = &self.file_path {
-        //     let file_path = remove_jump_lines(file_path.as_ref());
-        //
-        //     buffer.push('\n');
-        //     buffer.push_str(&color_bold_if(
-        //         format!("{}{}{}", VERTICAL_BAR, TOP_RIGHT_CORNER, RIGHT_POINTER),
-        //         log.level().color(),
-        //         in_ansi,
-        //     ));
-        //     buffer.push(' ');
-        //     buffer.push_str(&color_bold_if(
-        //         "at".to_string(),
-        //         log.level().color(),
-        //         in_ansi,
-        //     ));
-        //     buffer.push(' ');
-        //     buffer.push_str(file_path.as_str());
-        // }
-        //
-        // // SECTIONS
-        // if !self.sections.is_empty() {
-        //     // Normalize sections.
-        //     let mut normalized_sections = self.normalize_sections(self, log);
-        //     let last_line = normalized_sections.last().unwrap().end.line;
-        //     let last_content_line = Cursor::from_byte_offset_and_cursor(
-        //         &self.code,
-        //         self.code.len(),
-        //         &normalized_sections.last().unwrap().end,
-        //     )
-        //     .line;
-        //     let max_line_num_digits = last_line.to_string().len();
-        //
-        //     // EMPTY LINE
-        //     // Only if file path is present or the title is multiline.
-        //     if self.file_path.is_some()
-        //         || self
-        //             .title
-        //             .as_ref()
-        //             .map_or(false, |v| memchr::memchr(b'\n', v.as_bytes()).is_some())
-        //     {
-        //         buffer.push('\n');
-        //         buffer.push_str(&color_bold_if(
-        //             VERTICAL_BAR.to_string(),
-        //             log.level().color(),
-        //             in_ansi,
-        //         ));
-        //     }
-        //
-        //     // CONTENT
-        //     let mut sections_in_same_line = Vec::new();
-        //     while !normalized_sections.is_empty() {
-        //         // Filter only those sections that are in the same content line.
-        //         sections_in_same_line.clear();
-        //         self.get_sections_in_same_line(
-        //             &mut normalized_sections,
-        //             &mut sections_in_same_line,
-        //         );
-        //
-        //         // Get column to align messages.
-        //         let first_section = sections_in_same_line.first().unwrap();
-        //         let last_section = sections_in_same_line.last().unwrap();
-        //         let number_of_cursors =
-        //             sections_in_same_line.iter().filter(|s| s.is_cursor).count();
-        //         let message_column = last_section.end.column + number_of_cursors + 1;
-        //
-        //         // CONTENT LINE
-        //         buffer.push('\n');
-        //         buffer.push_str(&color_bold_if(
-        //             VERTICAL_BAR.to_string(),
-        //             log.level().color(),
-        //             in_ansi,
-        //         ));
-        //         buffer.push_str("   ");
-        //         buffer.push_str(&color_bold_if(
-        //             format!(
-        //                 "{:>width$}",
-        //                 last_section.start.line,
-        //                 width = max_line_num_digits
-        //             ),
-        //             log.level().color(),
-        //             in_ansi,
-        //         ));
-        //         buffer.push_str("  ");
-        //
-        //         // SECTIONS
-        //         let start_line_cursor = first_section.start.start_line_cursor(&self.code);
-        //         let mut prev_cursor = start_line_cursor.clone();
-        //         for section in &sections_in_same_line {
-        //             // PREVIOUS CONTENT
-        //             buffer.push_str(prev_cursor.slice(&self.code, &section.start));
-        //
-        //             // CONTENT
-        //             section.print_content_section(self, in_ansi, buffer);
-        //
-        //             prev_cursor = section.end.clone();
-        //         }
-        //
-        //         // FINAL CONTENT
-        //         buffer.push_str(prev_cursor.slice_to_line_end(&self.code));
-        //
-        //         if self.show_new_line_chars && last_section.end.line != last_content_line {
-        //             buffer.push_str(&color_bold_if(
-        //                 NEW_LINE_LEFT.to_string(),
-        //                 last_section.color.unwrap(),
-        //                 in_ansi
-        //                     && (last_section.is_multiline_start
-        //                         || last_section.is_ended_by_new_line(&self.code)),
-        //             ));
-        //         }
-        //
-        //         // ARROW LINES
-        //         // Count lines with messages.
-        //         let arrow_lines_height = max(
-        //             sections_in_same_line
-        //                 .iter()
-        //                 .enumerate()
-        //                 .filter(|(i, v)| {
-        //                     v.message.is_some()
-        //                         || v.is_multiline_start
-        //                         || *i == sections_in_same_line.len() - 1
-        //                 })
-        //                 .count(),
-        //             1, /* This is because there is always one line */
-        //         );
-        //
-        //         // Print lines.
-        //         let digits_as_whitespace = " ".repeat(max_line_num_digits);
-        //
-        //         for arrow_line in 0..arrow_lines_height {
-        //             let mut arrow_lines_height = arrow_lines_height;
-        //
-        //             buffer.push('\n');
-        //             buffer.push_str(&color_bold_if(
-        //                 VERTICAL_BAR.to_string(),
-        //                 log.level().color(),
-        //                 in_ansi,
-        //             ));
-        //             buffer.push_str("   ");
-        //             buffer.push_str(&digits_as_whitespace);
-        //             buffer.push_str("  ");
-        //
-        //             // SECTIONS
-        //             let mut prev_cursor = start_line_cursor.clone();
-        //             for section in &sections_in_same_line {
-        //                 // PREVIOUS CONTENT
-        //                 buffer.push_str(
-        //                     &" ".repeat(section.start.char_offset - prev_cursor.char_offset),
-        //                 );
-        //
-        //                 // CONTENT
-        //                 let has_printed_message = section.print(
-        //                     buffer,
-        //                     in_ansi,
-        //                     arrow_line,
-        //                     arrow_lines_height,
-        //                     message_column,
-        //                     max_line_num_digits,
-        //                 );
-        //
-        //                 if has_printed_message {
-        //                     break;
-        //                 }
-        //
-        //                 if section.message.is_some() {
-        //                     arrow_lines_height -= 1;
-        //                 }
-        //
-        //                 prev_cursor = section.end.clone();
-        //             }
-        //         }
-        //     }
-        // }
 
         // Final line + message.
         {
