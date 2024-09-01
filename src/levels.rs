@@ -42,22 +42,22 @@ impl LogLevel {
     // GETTERS ----------------------------------------------------------------
 
     /// Returns a number that defines an order between log levels.
-    pub fn level(&self) -> u8 {
+    pub const fn level(&self) -> u8 {
         self.level
     }
 
     /// Returns the tag that represents the log level.
-    pub fn tag(&self) -> &'static str {
+    pub const fn tag(&self) -> &'static str {
         self.tag
     }
 
     /// Returns the color that represents the log level.
-    pub fn color(&self) -> Color {
+    pub const fn color(&self) -> Color {
         self.color
     }
 
     /// Returns the symbol that represents the log level.
-    pub fn symbol(&self) -> char {
+    pub const fn symbol(&self) -> char {
         self.symbol
     }
 

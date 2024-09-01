@@ -1,8 +1,17 @@
 use crate::constants::HORIZONTAL_BAR;
 use crate::printer::{Printable, Printer, PrinterFormat};
+use crate::utils::whitespaces::build_space_string;
 use crate::LogLevel;
+use const_format::{concatcp, formatcp};
+use std::borrow::Cow;
 use std::fmt::Display;
 use yansi::Style;
+
+const N_HORIZONTAL_BARS: usize = 100;
+const HORIZONTAL_BARS: &str = formatcp!("{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}", HORIZONTAL_BAR);
+const _: () = {
+    assert!(HORIZONTAL_BARS.len() == HORIZONTAL_BAR.len_utf8() * N_HORIZONTAL_BARS);
+};
 
 /// A block that prints a line separator repeating a character.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -15,8 +24,15 @@ impl SeparatorBlock {
     // CONSTRUCTORS -----------------------------------------------------------
 
     /// Creates a new [SeparatorBlock].
+    ///
+    /// # Panic
+    /// This method panics if `character` is a newline character.
     #[inline(always)]
     pub fn new(width: usize, character: char) -> Self {
+        assert_ne!(
+            character, '\n',
+            "The character cannot be a newline character."
+        );
         Self { width, character }
     }
 
@@ -53,8 +69,15 @@ impl SeparatorBlock {
     }
 
     /// Sets the character used to repeat the separator.
+    ///
+    /// # Panic
+    /// This method panics if `character` is a newline character.
     #[inline(always)]
     pub fn character(mut self, character: char) -> Self {
+        assert_ne!(
+            character, '\n',
+            "The character cannot be a newline character."
+        );
         self.character = character;
         self
     }
@@ -69,7 +92,17 @@ impl<'a> Printable<'a> for SeparatorBlock {
             return;
         }
 
-        let separator = format!("{}", self.character).repeat(self.width);
+        let separator = match self.character {
+            ' ' => build_space_string(self.width),
+            HORIZONTAL_BAR => {
+                if self.width < N_HORIZONTAL_BARS {
+                    Cow::Borrowed(&HORIZONTAL_BARS[0..(self.width * HORIZONTAL_BAR.len_utf8())])
+                } else {
+                    Cow::Owned(concatcp!(HORIZONTAL_BAR).repeat(self.width))
+                }
+            }
+            _ => Cow::Owned(format!("{}", self.character).repeat(self.width)),
+        };
         printer.push_styled_text(separator, Style::new().bold().fg(printer.level.color()));
     }
 }

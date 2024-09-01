@@ -2,6 +2,7 @@ use crate::blocks::TextBlock;
 use crate::constants::NEW_LINE_RIGH;
 use crate::printer::{Printable, Printer, PrinterFormat};
 use crate::utils::text::remove_jump_lines;
+use crate::utils::whitespaces::build_space_string;
 use crate::LogLevel;
 use chrono::{SecondsFormat, Utc};
 use const_format::concatcp;
@@ -134,7 +135,7 @@ impl<'a> Printable<'a> for HeaderBlock<'a> {
         if !self.location.is_empty() {
             printer.push_plain_text(Cow::Borrowed(" in "));
 
-            let prefix = TextBlock::new_plain(" ".repeat(printer.level.tag().len() + 1));
+            let prefix = TextBlock::new_plain(build_space_string(printer.level.tag().len() + 1));
             let mut location_printer = printer.derive();
 
             self.location.print(&mut location_printer);

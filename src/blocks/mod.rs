@@ -1,14 +1,15 @@
 use crate::printer::{Printable, Printer};
+
+pub use code::*;
 pub use header::*;
 pub use note::*;
-// pub use document::*;
 pub use prefix::*;
 pub use separator::*;
 pub use stack::*;
 pub use stack_trace::*;
 pub use text::*;
 
-// mod document;
+mod code;
 mod header;
 mod note;
 mod prefix;
@@ -24,13 +25,12 @@ pub enum LogBlock<'a> {
     Text(TextBlock<'a>),
     Prefix(PrefixBlock<'a>),
 
-    // TODO
     // Custom blocks.
     Separator(SeparatorBlock),
     Header(HeaderBlock<'a>),
     Note(NoteBlock<'a>),
     Stack(StackBlock<'a>),
-    // Document(DocumentBlock<'a>),
+    Code(CodeBlock<'a>),
 }
 
 impl<'a> LogBlock<'a> {
@@ -48,6 +48,7 @@ impl<'a> LogBlock<'a> {
             LogBlock::Header(v) => LogBlock::Header(v.make_owned()),
             LogBlock::Note(v) => LogBlock::Note(v.make_owned()),
             LogBlock::Stack(v) => LogBlock::Stack(v.make_owned()),
+            LogBlock::Code(v) => LogBlock::Code(v.make_owned()),
         }
     }
 }
@@ -73,6 +74,7 @@ impl<'a> Printable<'a> for LogBlock<'a> {
             LogBlock::Header(v) => v.print(printer),
             LogBlock::Note(v) => v.print(printer),
             LogBlock::Stack(v) => v.print(printer),
+            LogBlock::Code(v) => v.print(printer),
         }
     }
 }

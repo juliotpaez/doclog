@@ -4,6 +4,7 @@ use crate::constants::{
     VERTICAL_RIGHT_BAR,
 };
 use crate::printer::{Printable, Printer, PrinterFormat};
+use crate::utils::whitespaces::build_space_string;
 use crate::LogLevel;
 use const_format::concatcp;
 use std::borrow::Cow;
@@ -189,7 +190,7 @@ impl<'a> StackBlock<'a> {
             Style::new().bold().fg(printer.level.color()),
         );
         let full_trace_prefix = trace_prefix.clone().add_styled_text(
-            " ".repeat(max_trace_digits + 2),
+            build_space_string(max_trace_digits + 2),
             Style::new().bold().fg(printer.level.color()),
         );
 
@@ -306,7 +307,7 @@ impl<'a> StackBlock<'a> {
             Style::new().bold().fg(printer.level.color()),
         );
         let full_trace_prefix = trace_prefix.clone().add_styled_text(
-            " ".repeat(max_trace_digits + 2),
+            build_space_string(max_trace_digits + 2),
             Style::new().bold().fg(printer.level.color()),
         );
 
