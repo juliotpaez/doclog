@@ -41,16 +41,6 @@ impl<'a> CodeSection<'a> {
 
     // METHODS ----------------------------------------------------------------
 
-    /// Returns whether the section ends with a new line.
-    pub(crate) fn is_ended_by_new_line(&self, text: &str) -> bool {
-        let text = &text[self.end.byte_offset..];
-
-        match text.chars().next() {
-            Some(v) => v == '\n',
-            None => false,
-        }
-    }
-
     /// Prints the actual code of the section.
     pub(crate) fn print_content(
         &self,

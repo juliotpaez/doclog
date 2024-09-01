@@ -1,5 +1,5 @@
 use crate::blocks::TextBlock;
-use crate::constants::NEW_LINE_RIGH;
+use crate::constants::NEW_LINE_RIGHT;
 use crate::printer::{Printable, Printer, PrinterFormat};
 use crate::utils::text::remove_jump_lines;
 use crate::utils::whitespaces::build_space_string;
@@ -148,7 +148,7 @@ impl<'a> Printable<'a> for HeaderBlock<'a> {
             let date = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
 
             printer.push_styled_text(
-                Cow::Borrowed(concatcp!("\n ", NEW_LINE_RIGH, " at ")),
+                Cow::Borrowed(concatcp!("\n ", NEW_LINE_RIGHT, " at ")),
                 Style::new().bold().fg(printer.level.color()),
             );
 
@@ -163,7 +163,7 @@ impl<'a> Printable<'a> for HeaderBlock<'a> {
                 .to_string();
 
             printer.push_styled_text(
-                Cow::Borrowed(concatcp!("\n ", NEW_LINE_RIGH, " in thread ")),
+                Cow::Borrowed(concatcp!("\n ", NEW_LINE_RIGHT, " in thread ")),
                 Style::new().bold().fg(printer.level.color()),
             );
 

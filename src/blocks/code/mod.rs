@@ -698,7 +698,7 @@ impl<'a> CodeBlock<'a> {
                             .iter()
                             .enumerate()
                             .rev()
-                            .find(|(i, v)| !v.message.is_empty())
+                            .find(|(_, v)| !v.message.is_empty())
                     {
                         &current_line_sections[..index + 1]
                     } else {
@@ -966,6 +966,7 @@ mod tests {
     use super::*;
     use crate::LogLevel;
 
+    // TODO: add tests.
     #[test]
     fn test_plain() {
         let code =

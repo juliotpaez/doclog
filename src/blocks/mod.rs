@@ -19,6 +19,7 @@ mod stack_trace;
 mod text;
 
 /// A block log.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum LogBlock<'a> {
     // Basic blocks.
@@ -31,6 +32,7 @@ pub enum LogBlock<'a> {
     Note(NoteBlock<'a>),
     Stack(StackBlock<'a>),
     Code(CodeBlock<'a>),
+    // TODO: add CodeListBlock
 }
 
 impl<'a> LogBlock<'a> {
@@ -53,12 +55,6 @@ impl<'a> LogBlock<'a> {
     }
 }
 
-impl<'a> From<TextBlock<'a>> for LogBlock<'a> {
-    fn from(block: TextBlock<'a>) -> Self {
-        LogBlock::Text(block)
-    }
-}
-
 impl<'a> Printable<'a> for LogBlock<'a> {
     fn print<'s>(&'s self, printer: &mut Printer<'a>)
     where
@@ -76,5 +72,47 @@ impl<'a> Printable<'a> for LogBlock<'a> {
             LogBlock::Stack(v) => v.print(printer),
             LogBlock::Code(v) => v.print(printer),
         }
+    }
+}
+
+impl<'a> From<TextBlock<'a>> for LogBlock<'a> {
+    fn from(block: TextBlock<'a>) -> Self {
+        LogBlock::Text(block)
+    }
+}
+
+impl<'a> From<PrefixBlock<'a>> for LogBlock<'a> {
+    fn from(block: PrefixBlock<'a>) -> Self {
+        LogBlock::Prefix(block)
+    }
+}
+
+impl<'a> From<SeparatorBlock> for LogBlock<'a> {
+    fn from(block: SeparatorBlock) -> Self {
+        LogBlock::Separator(block)
+    }
+}
+
+impl<'a> From<HeaderBlock<'a>> for LogBlock<'a> {
+    fn from(block: HeaderBlock<'a>) -> Self {
+        LogBlock::Header(block)
+    }
+}
+
+impl<'a> From<NoteBlock<'a>> for LogBlock<'a> {
+    fn from(block: NoteBlock<'a>) -> Self {
+        LogBlock::Note(block)
+    }
+}
+
+impl<'a> From<StackBlock<'a>> for LogBlock<'a> {
+    fn from(block: StackBlock<'a>) -> Self {
+        LogBlock::Stack(block)
+    }
+}
+
+impl<'a> From<CodeBlock<'a>> for LogBlock<'a> {
+    fn from(block: CodeBlock<'a>) -> Self {
+        LogBlock::Code(block)
     }
 }
