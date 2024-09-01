@@ -18,10 +18,11 @@ use yansi::Style;
 ///
 /// # Examples
 /// ```text
-/// info in /path/to/file.rs
+/// info[code] in /path/to/file.rs
 /// ```
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct HeaderBlock<'a> {
+    title: TextBlock<'a>,
     code: Cow<'a, str>,
     location: TextBlock<'a>,
     show_date: bool,
@@ -38,6 +39,18 @@ impl<'a> HeaderBlock<'a> {
     }
 
     // GETTERS ----------------------------------------------------------------
+
+    /// Returns the title.
+    #[inline(always)]
+    pub fn get_title(&self) -> &TextBlock<'a> {
+        &self.title
+    }
+
+    /// Returns a mutable reference to the title.
+    #[inline(always)]
+    pub fn get_title_mut(&mut self) -> &mut TextBlock<'a> {
+        &mut self.title
+    }
 
     /// Returns the code.
     #[inline(always)]
@@ -70,6 +83,13 @@ impl<'a> HeaderBlock<'a> {
     }
 
     // SETTERS ----------------------------------------------------------------
+
+    /// Sets the title.
+    #[inline(always)]
+    pub fn title(mut self, title: impl Into<TextBlock<'a>>) -> Self {
+        self.title = title.into();
+        self
+    }
 
     /// Sets the code.
     #[inline(always)]
@@ -104,6 +124,7 @@ impl<'a> HeaderBlock<'a> {
     /// Makes this type owned, i.e. changing the lifetime to `'static`.
     pub fn make_owned(self) -> HeaderBlock<'static> {
         HeaderBlock {
+            title: self.title.make_owned(),
             code: Cow::Owned(self.code.into_owned()),
             location: self.location.make_owned(),
             show_date: self.show_date,
@@ -131,11 +152,26 @@ impl<'a> Printable<'a> for HeaderBlock<'a> {
             );
         }
 
-        // Add location.
-        if !self.location.is_empty() {
-            printer.push_plain_text(Cow::Borrowed(" in "));
+        // Add title.
+        if !self.title.is_empty() {
+            printer.push_plain_text(Cow::Borrowed(" "));
 
             let prefix = TextBlock::new_plain(build_space_string(printer.level.tag().len() + 1));
+            let mut location_printer = printer.derive();
+
+            self.title.print(&mut location_printer);
+            location_printer.indent(prefix.get_sections(), false);
+            printer.append(location_printer);
+        }
+
+        // Add location.
+        if !self.location.is_empty() {
+            printer.push_styled_text(
+                Cow::Borrowed(concatcp!("\n ", NEW_LINE_RIGHT, " in ")),
+                Style::new().bold().fg(printer.level.color()),
+            );
+
+            let prefix = TextBlock::new_plain(Cow::Borrowed("      "));
             let mut location_printer = printer.derive();
 
             self.location.print(&mut location_printer);
@@ -208,13 +244,22 @@ mod tests {
 
         assert_eq!(text, "ERROR[c-xxxxx]");
 
+        // Title
+        let log = HeaderBlock::new().title("This is\na title");
+        let text = log
+            .print_to_string(LogLevel::debug(), PrinterFormat::Plain)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "DEBUG This is\n      a title");
+
         // Location
         let log = HeaderBlock::new().location(TextBlock::new_plain("src/blocks/\n/header.rs:3:26"));
         let text = log
             .print_to_string(LogLevel::error(), PrinterFormat::Plain)
             .to_string();
 
-        assert_eq!(text, "ERROR in src/blocks/\n      /header.rs:3:26");
+        assert_eq!(text, "ERROR\n ↪ in src/blocks/\n      /header.rs:3:26");
 
         // Date
         let log = HeaderBlock::new().show_date(true);
@@ -239,6 +284,7 @@ mod tests {
 
         // All
         let log = HeaderBlock::new()
+            .title("This is\na title")
             .code("c-xxxxx")
             .location(TextBlock::new_plain("src/blocks/header.rs:3:26"))
             .show_date(true)
@@ -246,12 +292,12 @@ mod tests {
         let text = log
             .print_to_string(LogLevel::error(), PrinterFormat::Plain)
             .to_string();
-        let date = &text[52..][..24];
+        let date = &text[79..][..24];
 
         assert_eq!(
             text,
             format!(
-                "ERROR[c-xxxxx] in src/blocks/header.rs:3:26\n ↪ at {date}\n ↪ in thread {thread}"
+                "ERROR[c-xxxxx] This is\n      a title\n ↪ in src/blocks/header.rs:3:26\n ↪ at {date}\n ↪ in thread {thread}"
             )
         );
     }
@@ -279,6 +325,15 @@ mod tests {
             "\u{1b}[1;32mDEBUG\u{1b}[0m\u{1b}[1m[c-xxxxx]\u{1b}[0m"
         );
 
+        // Title
+        let log = HeaderBlock::new().title("This is\na title");
+        let text = log
+            .print_to_string(LogLevel::debug(), PrinterFormat::Styled)
+            .to_string();
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;32mDEBUG \u{1b}[0mThis is\n      a title");
+
         // Location
         let log = HeaderBlock::new().location(TextBlock::new_plain("src/blocks/\n/header.rs:3:26"));
         let text = log
@@ -288,7 +343,7 @@ mod tests {
         println!("{}", text);
         assert_eq!(
             text,
-            "\u{1b}[1;34mINFO\u{1b}[0m in src/blocks/\n     /header.rs:3:26"
+            "\u{1b}[1;34mINFO\n ↪ in \u{1b}[0msrc/blocks/\n      /header.rs:3:26"
         );
 
         // Date
@@ -322,6 +377,7 @@ mod tests {
 
         // All
         let log = HeaderBlock::new()
+            .title("This is\na title")
             .code("c-xxxxx")
             .location(TextBlock::new_plain("src/blocks/header.rs:3:26"))
             .show_date(true)
@@ -329,13 +385,13 @@ mod tests {
         let text = log
             .print_to_string(LogLevel::error(), PrinterFormat::Styled)
             .to_string();
-        let date = &text[86..][..24];
+        let date = &text[124..][..24];
 
         println!("{}", text);
         assert_eq!(
             text,
             format!(
-                "\u{1b}[1;31mERROR\u{1b}[0m\u{1b}[1m[c-xxxxx]\u{1b}[0m in src/blocks/header.rs:3:26\n\u{1b}[1;31m ↪ at \u{1b}[0m\u{1b}[1m{date}\n\u{1b}[0m\u{1b}[1;31m ↪ in thread \u{1b}[0m\u{1b}[1m{thread}\u{1b}[0m"
+                "\u{1b}[1;31mERROR\u{1b}[0m\u{1b}[1m[c-xxxxx] \u{1b}[0mThis is\n      a title\n\u{1b}[1;31m ↪ in \u{1b}[0msrc/blocks/header.rs:3:26\n\u{1b}[1;31m ↪ at \u{1b}[0m\u{1b}[1m{date}\n\u{1b}[0m\u{1b}[1;31m ↪ in thread \u{1b}[0m\u{1b}[1m{thread}\u{1b}[0m"
             )
         );
     }

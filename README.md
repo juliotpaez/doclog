@@ -1,4 +1,5 @@
 # doclog
+
 A Rust log library based on Rust's compiler logs.
 
 ## Usage
@@ -7,16 +8,18 @@ The library is intended to be used building a `Log` using a builder:
 
 ```rust
 pub fn main() {
-    let content = "let a = \"test\"\nlet y = 3\nlet z = x + y";
-    let log = Log::info()
-        .title(
-            arcstr::literal!("A title"), /* show date */ true, /* show thread */ false,
-        )
-        .indent(|log| {
-            log.document_str(content, |doc| {
-                doc.highlight_section_str(37..38, Some("The variable 'y' must be a number"), None)
-            })
-        });
+    let code = "let a = \"test\"\nlet y = 3\nlet z = x + y";
+    let log = Log::error().add_block(
+        HeaderBlock::new().title("Invalid variable type").location("/lib.rs").show_date(true).show_thread(false),
+    ).add_block(
+        PrefixBlock::new().prefix("  ").content(LogContent::new().add_block(
+            CodeBlock::new(code).highlight_section_message(
+                37..38,
+                None,
+                "The variable 'y' must be a number",
+            ),
+        )),
+    );
 
     log.log();
 }
@@ -25,9 +28,11 @@ pub fn main() {
 This results in the following log in the terminal:
 
 ```
-info at 2021-03-09T12:16:18.382Z - A title
-    ┌─
-    │   3  let z = x + y
-    │                  └── The variable 'y' must be a number
-    └─
+ERROR Invalid variable type
+ ↪ in /lib.rs
+ ↪ at 2024-09-01T20:37:18.495Z
+  × ╭─
+  3 │    let z = x + y
+    │                ╰── The variable 'y' must be a number
+    ╰─
 ```

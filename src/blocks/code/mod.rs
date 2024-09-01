@@ -964,7 +964,8 @@ fn group_sections_in_same_line<'s, 'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::LogLevel;
+    use crate::blocks::{HeaderBlock, PrefixBlock};
+    use crate::{Log, LogContent, LogLevel};
 
     // TODO: add tests.
     #[test]
