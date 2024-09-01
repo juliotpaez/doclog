@@ -1,6 +1,9 @@
 use crate::blocks::code::CodeBlock;
 use crate::blocks::TextBlock;
-use crate::constants::{MIDDLE_DOT, NEW_LINE_LEFT};
+use crate::constants::{
+    HORIZONTAL_BAR, HORIZONTAL_BOTTOM_BAR, MIDDLE_DOT, NEW_LINE_LEFT, RIGHT_ARROW, TOP_LEFT_CORNER,
+    TOP_RIGHT_CORNER, UP_POINTER, VERTICAL_BAR, VERTICAL_RIGHT_BAR,
+};
 use crate::printer::Printer;
 use crate::utils::cursor::Cursor;
 use const_format::concatcp;
@@ -24,7 +27,11 @@ impl<'a> CodeSection<'a> {
 
     /// Returns the size of the section in characters.
     pub fn char_len(&self) -> usize {
-        self.end.char_offset - self.start.char_offset
+        if self.is_cursor() {
+            1
+        } else {
+            self.end.char_offset - self.start.char_offset
+        }
     }
 
     /// Returns whether this section is a cursor.
@@ -45,7 +52,7 @@ impl<'a> CodeSection<'a> {
     }
 
     /// Prints the actual code of the section.
-    pub(crate) fn print_content_section(
+    pub(crate) fn print_content(
         &self,
         printer: &mut Printer<'a>,
         block: &CodeBlock<'a>,
@@ -86,6 +93,74 @@ impl<'a> CodeSection<'a> {
 
             printer.push_styled_text(content, Style::new().bold().fg(next_color))
         }
+    }
+
+    /// Prints the actual code of the section.
+    pub(crate) fn print_underline(
+        &self,
+        printer: &mut Printer<'a>,
+        block: &CodeBlock<'a>,
+        next_color: Color,
+    ) {
+        // Print start multiline connection.
+        if self.is_multiline_start {
+            printer.push_styled_text(
+                format!(
+                    "{TOP_RIGHT_CORNER}{}{RIGHT_ARROW}",
+                    concatcp!(HORIZONTAL_BAR).repeat(self.char_len())
+                ),
+                Style::new().bold().fg(next_color),
+            );
+            return;
+        }
+
+        // Print end multiline connection.
+        if self.is_multiline_end {
+            if self.message.is_empty() {
+                printer.push_styled_text(
+                    format!(
+                        "{RIGHT_ARROW}{}{TOP_LEFT_CORNER}",
+                        concatcp!(HORIZONTAL_BAR).repeat(self.char_len())
+                    ),
+                    Style::new().bold().fg(next_color),
+                );
+            } else {
+                printer.push_styled_text(
+                    format!(
+                        "{RIGHT_ARROW}{HORIZONTAL_BAR}{HORIZONTAL_BOTTOM_BAR}{}{TOP_LEFT_CORNER}",
+                        concatcp!(HORIZONTAL_BAR).repeat(self.char_len().saturating_sub(2))
+                    ),
+                    Style::new().bold().fg(next_color),
+                );
+            }
+            return;
+        }
+
+        // Print single character.
+        if self.char_len() == 1 {
+            if self.message.is_empty() {
+                printer.push_styled_text(concatcp!(UP_POINTER), Style::new().bold().fg(next_color));
+            } else {
+                printer
+                    .push_styled_text(concatcp!(VERTICAL_BAR), Style::new().bold().fg(next_color));
+            }
+
+            return;
+        }
+
+        // Print multiple characters.
+        printer.push_styled_text(
+            format!(
+                "{}{}{TOP_LEFT_CORNER}",
+                if self.message.is_empty() {
+                    TOP_RIGHT_CORNER
+                } else {
+                    VERTICAL_RIGHT_BAR
+                },
+                concatcp!(HORIZONTAL_BAR).repeat(self.char_len() - 2)
+            ),
+            Style::new().bold().fg(next_color),
+        );
     }
 
     // TODO

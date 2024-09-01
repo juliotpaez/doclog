@@ -216,8 +216,8 @@ impl<'a> CodeBlock<'a> {
     pub fn highlight_cursor_message(
         self,
         position: usize,
-        message: impl Into<TextBlock<'a>>,
         color: Option<Color>,
+        message: impl Into<TextBlock<'a>>,
     ) -> Self {
         self.highlight_section_inner(position..position, Some(message.into()), color)
     }
@@ -242,8 +242,8 @@ impl<'a> CodeBlock<'a> {
     pub fn highlight_section_message(
         self,
         range: Range<usize>,
-        message: impl Into<TextBlock<'a>>,
         color: Option<Color>,
+        message: impl Into<TextBlock<'a>>,
     ) -> Self {
         assert!(
             range.start <= range.end,
@@ -322,9 +322,9 @@ impl<'a> CodeBlock<'a> {
                             end: start
                                 .next_start_line_cursor(&self.code)
                                 .unwrap_or_else(|| start.end_line_cursor(&self.code)),
-                            message: TextBlock::new(),
+                            message: message.unwrap_or_default(),
                             color,
-                            is_multiline_start: true,
+                            is_multiline_start: false,
                             is_multiline_end: false,
                         },
                     );
@@ -535,7 +535,7 @@ impl<'a> CodeBlock<'a> {
                         }
                     }
 
-                    // Print indent.
+                    // Print code line.
                     printer.push_styled_text(
                         format!(
                             "\n{:>width$} ",
@@ -549,7 +549,6 @@ impl<'a> CodeBlock<'a> {
                         Style::new().bold(),
                     );
 
-                    // Print code line.
                     let mut next_color = self.secondary_color;
                     let mut previous_cursor = line_start_cursor;
 
@@ -573,7 +572,7 @@ impl<'a> CodeBlock<'a> {
                                     self.secondary_color
                                 });
 
-                        section.print_content_section(printer, self, next_color);
+                        section.print_content(printer, self, next_color);
                         previous_cursor = section.end;
                     }
 
@@ -589,24 +588,29 @@ impl<'a> CodeBlock<'a> {
                         });
 
                         if self.show_new_line_chars {
-                            printer.push_plain_text(concatcp!(NEW_LINE_LEFT));
+                            printer.push_plain_text(Cow::Borrowed(concatcp!(NEW_LINE_LEFT)));
                         }
                     }
-                    
+
                     // TODO Print underline.
-                    let mut next_color = self.secondary_color;
-                    let mut previous_cursor = line_start_cursor;
+                    printer.push_plain_text(build_whitespace_string(1, max_line_digits + 1));
+                    printer.push_styled_text(
+                        if current_line_sections.first().unwrap().is_multiline_end {
+                            Cow::Borrowed(concatcp!(VERTICAL_BAR, "  "))
+                        } else {
+                            Cow::Borrowed(concatcp!(VERTICAL_BAR, "    "))
+                        },
+                        Style::new().bold(),
+                    );
+
+                    next_color = self.secondary_color;
+                    previous_cursor = line_start_cursor;
 
                     for section in &current_line_sections {
                         // Print previous content.
-                        printer.push_plain_text(match &self.code {
-                            Cow::Borrowed(v) => {
-                                Cow::Borrowed(previous_cursor.slice(v, &section.start))
-                            }
-                            Cow::Owned(v) => {
-                                Cow::Owned(previous_cursor.slice(v, &section.start).to_string())
-                            }
-                        });
+                        printer.push_plain_text(build_space_string(
+                            section.start.char_offset - previous_cursor.char_offset,
+                        ));
 
                         next_color =
                             section
@@ -617,24 +621,8 @@ impl<'a> CodeBlock<'a> {
                                     self.secondary_color
                                 });
 
-                        section.print_content_section(printer, self, next_color);
+                        section.print_underline(printer, self, next_color);
                         previous_cursor = section.end;
-                    }
-
-                    if previous_cursor.line == line_start_cursor.line {
-                        let line_end_cursor = previous_cursor.end_line_cursor(&self.code);
-                        printer.push_plain_text(match &self.code {
-                            Cow::Borrowed(v) => {
-                                Cow::Borrowed(previous_cursor.slice(v, &line_end_cursor))
-                            }
-                            Cow::Owned(v) => {
-                                Cow::Owned(previous_cursor.slice(v, &line_end_cursor).to_string())
-                            }
-                        });
-
-                        if self.show_new_line_chars {
-                            printer.push_plain_text(concatcp!(NEW_LINE_LEFT));
-                        }
                     }
                 }
             }
@@ -998,16 +986,30 @@ mod tests {
             .title("This is\na title")
             .final_message("This is\na message")
             .file_path("a/b/c")
+            // // Line 3
+            // .highlight_section(14..15, None)
+            // .highlight_cursor(15, None)
+            // .highlight_section(15..16, None)
+            // .highlight_cursor(16, None)
+            // .highlight_section(16..20, None)
+            // .highlight_cursor(20, None)
+            // .highlight_section(20..21, None)
+            // // Line 6
+            // .highlight_section(36..41, None)
+            // // Line 8
+            // .highlight_section(52..58, None)
             // Line 3
-            .highlight_section(14..15, None)
-            .highlight_cursor(15, None)
-            .highlight_section(15..16, None)
-            .highlight_cursor(16, None)
-            .highlight_section(16..20, None)
-            .highlight_cursor(20, None)
-            .highlight_section(20..21, None)
+            .highlight_section_message(14..15, None, "This is\na message")
+            .highlight_cursor_message(15, None, "This is\na message")
+            .highlight_section_message(15..16, None, "This is\na message")
+            .highlight_cursor_message(16, None, "This is\na message")
+            .highlight_section_message(16..20, None, "This is\na message")
+            .highlight_cursor_message(20, None, "This is\na message")
+            .highlight_section_message(20..21, None, "This is\na message")
             // Line 6
-            .highlight_section(36..41, None)
+            .highlight_section_message(36..41, None, "This is\na message")
+            // Line 8
+            .highlight_section_message(52..58, None, "This is\na message")
             // .previous_lines(1)
             // .next_lines(1)
             // .middle_lines(50)
