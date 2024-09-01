@@ -59,6 +59,10 @@ impl<'a> Printer<'a> {
 
     /// Pushes a text section to the printer.
     pub fn push_text_section(&mut self, element: TextSection<'a>) {
+        if element.text.is_empty() {
+            return;
+        }
+
         match element.text {
             Cow::Borrowed(text) => {
                 for (i, line) in text.lines().enumerate() {

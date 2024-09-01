@@ -1,4 +1,3 @@
-use bytecount::count;
 use std::borrow::Cow;
 
 const N_NEWLINES: usize = 32;

@@ -268,25 +268,25 @@ impl<'a> CodeBlock<'a> {
             "The end index must be less or equal than the code length"
         );
 
-        let index = match self.sections.binary_search_by(|section| {
-            if range.end <= section.start.byte_offset {
-                std::cmp::Ordering::Greater
-            } else if section.end.byte_offset <= range.start {
-                std::cmp::Ordering::Less
-            } else if range.start == section.start.byte_offset
-                && range.end == section.end.byte_offset
-            {
+        let index = self
+            .sections
+            .binary_search_by(|section| {
                 // Special case to detect the addition of two equal cursors.
-                panic!("Sections cannot collide with others");
-            } else {
-                std::cmp::Ordering::Equal
-            }
-        }) {
-            Ok(_) => {
-                panic!("Sections cannot collide with others");
-            }
-            Err(index) => index,
-        };
+                assert!(
+                    range.start != section.start.byte_offset
+                        || range.end != section.end.byte_offset,
+                    "Sections cannot collide with others"
+                );
+
+                if range.end <= section.start.byte_offset {
+                    std::cmp::Ordering::Greater
+                } else if section.end.byte_offset <= range.start {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+            .expect_err("Sections cannot collide with others");
 
         let start = if let Some(section) = self.sections.get(index) {
             Cursor::from_byte_offset_and_cursor(&self.code, range.start, &section.start)
@@ -312,52 +312,31 @@ impl<'a> CodeBlock<'a> {
             let is_multiline = start.line != end.line;
 
             if is_multiline {
-                if start.slice(&self.code, &end).ends_with('\n') {
-                    let end =
-                        Cursor::from_byte_offset_and_cursor(&self.code, end.byte_offset - 1, &end);
-
-                    if end.line == start.line {
-                        self.sections.insert(
-                            index,
-                            CodeSection {
-                                start,
-                                end,
-                                message: message.unwrap_or_default(),
-                                color,
-                                is_multiline_start: false,
-                                is_multiline_end: false,
-                            },
-                        );
-                    } else {
-                        self.sections.splice(
-                            index..index,
-                            [
-                                CodeSection {
-                                    start,
-                                    end: start.end_line_cursor(&self.code),
-                                    message: TextBlock::new(),
-                                    color,
-                                    is_multiline_start: true,
-                                    is_multiline_end: false,
-                                },
-                                CodeSection {
-                                    start: end.start_line_cursor(&self.code),
-                                    end,
-                                    message: message.unwrap_or_default(),
-                                    color,
-                                    is_multiline_start: false,
-                                    is_multiline_end: true,
-                                },
-                            ],
-                        );
-                    }
+                // When the end cursor is at the start of a line, it means the section finishes at
+                // a new line character, therefore we need to add only one section.
+                if end.column == 1 {
+                    self.sections.insert(
+                        index,
+                        CodeSection {
+                            start,
+                            end: start
+                                .next_start_line_cursor(&self.code)
+                                .unwrap_or_else(|| start.end_line_cursor(&self.code)),
+                            message: TextBlock::new(),
+                            color,
+                            is_multiline_start: true,
+                            is_multiline_end: false,
+                        },
+                    );
                 } else {
                     self.sections.splice(
                         index..index,
                         [
                             CodeSection {
                                 start,
-                                end: start.end_line_cursor(&self.code),
+                                end: start
+                                    .next_start_line_cursor(&self.code)
+                                    .unwrap_or_else(|| start.end_line_cursor(&self.code)),
                                 message: TextBlock::new(),
                                 color,
                                 is_multiline_start: true,
@@ -492,7 +471,6 @@ impl<'a> CodeBlock<'a> {
             // Show highlighted sections.
             {
                 let last_line = self.sections.first().unwrap().start.line;
-                let mut next_color = printer.level.color();
                 let mut sections: &[CodeSection] = &self.sections;
                 let mut current_line_sections = Vec::new();
 
@@ -557,8 +535,107 @@ impl<'a> CodeBlock<'a> {
                         }
                     }
 
-                    // TODO Print code line.
-                    // TODO Print message lines.
+                    // Print indent.
+                    printer.push_styled_text(
+                        format!(
+                            "\n{:>width$} ",
+                            line_start_cursor.line,
+                            width = max_line_digits
+                        ),
+                        Style::new().bold().fg(Color::BrightBlack),
+                    );
+                    printer.push_styled_text(
+                        Cow::Borrowed(concatcp!(VERTICAL_BAR, "    ")),
+                        Style::new().bold(),
+                    );
+
+                    // Print code line.
+                    let mut next_color = self.secondary_color;
+                    let mut previous_cursor = line_start_cursor;
+
+                    for section in &current_line_sections {
+                        // Print previous content.
+                        printer.push_plain_text(match &self.code {
+                            Cow::Borrowed(v) => {
+                                Cow::Borrowed(previous_cursor.slice(v, &section.start))
+                            }
+                            Cow::Owned(v) => {
+                                Cow::Owned(previous_cursor.slice(v, &section.start).to_string())
+                            }
+                        });
+
+                        next_color =
+                            section
+                                .color
+                                .unwrap_or(if next_color == self.secondary_color {
+                                    printer.level.color()
+                                } else {
+                                    self.secondary_color
+                                });
+
+                        section.print_content_section(printer, self, next_color);
+                        previous_cursor = section.end;
+                    }
+
+                    if previous_cursor.line == line_start_cursor.line {
+                        let line_end_cursor = previous_cursor.end_line_cursor(&self.code);
+                        printer.push_plain_text(match &self.code {
+                            Cow::Borrowed(v) => {
+                                Cow::Borrowed(previous_cursor.slice(v, &line_end_cursor))
+                            }
+                            Cow::Owned(v) => {
+                                Cow::Owned(previous_cursor.slice(v, &line_end_cursor).to_string())
+                            }
+                        });
+
+                        if self.show_new_line_chars {
+                            printer.push_plain_text(concatcp!(NEW_LINE_LEFT));
+                        }
+                    }
+                    
+                    // TODO Print underline.
+                    let mut next_color = self.secondary_color;
+                    let mut previous_cursor = line_start_cursor;
+
+                    for section in &current_line_sections {
+                        // Print previous content.
+                        printer.push_plain_text(match &self.code {
+                            Cow::Borrowed(v) => {
+                                Cow::Borrowed(previous_cursor.slice(v, &section.start))
+                            }
+                            Cow::Owned(v) => {
+                                Cow::Owned(previous_cursor.slice(v, &section.start).to_string())
+                            }
+                        });
+
+                        next_color =
+                            section
+                                .color
+                                .unwrap_or(if next_color == self.secondary_color {
+                                    printer.level.color()
+                                } else {
+                                    self.secondary_color
+                                });
+
+                        section.print_content_section(printer, self, next_color);
+                        previous_cursor = section.end;
+                    }
+
+                    if previous_cursor.line == line_start_cursor.line {
+                        let line_end_cursor = previous_cursor.end_line_cursor(&self.code);
+                        printer.push_plain_text(match &self.code {
+                            Cow::Borrowed(v) => {
+                                Cow::Borrowed(previous_cursor.slice(v, &line_end_cursor))
+                            }
+                            Cow::Owned(v) => {
+                                Cow::Owned(previous_cursor.slice(v, &line_end_cursor).to_string())
+                            }
+                        });
+
+                        if self.show_new_line_chars {
+                            printer.push_plain_text(concatcp!(NEW_LINE_LEFT));
+                        }
+                    }
                 }
             }
 
@@ -921,11 +998,19 @@ mod tests {
             .title("This is\na title")
             .final_message("This is\na message")
             .file_path("a/b/c")
-            .highlight_section(14..20, None) // Line 3
-            .highlight_section(35..41, None) // Line 6
-            .previous_lines(1)
-            .next_lines(1)
-            .middle_lines(50)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // .previous_lines(1)
+            // .next_lines(1)
+            // .middle_lines(50)
             .show_new_line_chars(true)
             .print_to_string(LogLevel::error(), PrinterFormat::Styled)
             .to_string();

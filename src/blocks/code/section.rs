@@ -55,13 +55,33 @@ impl<'a> CodeSection<'a> {
             printer.push_styled_text(concatcp!(MIDDLE_DOT), Style::new().bold().fg(next_color))
         } else {
             let content = match &block.code {
-                Cow::Borrowed(code) => Cow::Borrowed(self.start.slice(code, &self.end)),
-                Cow::Owned(code) => Cow::Owned(self.start.slice(code, &self.end).to_string()),
-            };
-            let content = if block.show_new_line_chars {
-                content
-            } else {
-                Cow::Owned(content.replace('\n', concatcp!(NEW_LINE_LEFT)))
+                Cow::Borrowed(code) => {
+                    if !block.show_new_line_chars {
+                        Cow::Borrowed(self.start.slice(code, &self.end).trim_end_matches('\n'))
+                    } else {
+                        Cow::Owned(
+                            self.start
+                                .slice(code, &self.end)
+                                .replace('\n', concatcp!(NEW_LINE_LEFT)),
+                        )
+                    }
+                }
+                Cow::Owned(code) => {
+                    if !block.show_new_line_chars {
+                        Cow::Owned(
+                            self.start
+                                .slice(code, &self.end)
+                                .trim_end_matches('\n')
+                                .to_string(),
+                        )
+                    } else {
+                        Cow::Owned(
+                            self.start
+                                .slice(code, &self.end)
+                                .replace('\n', concatcp!(NEW_LINE_LEFT)),
+                        )
+                    }
+                }
             };
 
             printer.push_styled_text(content, Style::new().bold().fg(next_color))
