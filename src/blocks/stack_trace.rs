@@ -192,9 +192,7 @@ mod tests {
     fn test_styled() {
         // Empty
         let log = StackTraceBlock::new();
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "<unknown location>");
@@ -202,18 +200,14 @@ mod tests {
         // Location
         let log =
             StackTraceBlock::new().file_location(TextBlock::new_plain("/path/to/file.rs:15:24"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "/path/to/file.rs:15:24");
 
         // Inner path
         let log = StackTraceBlock::new().code_path(TextBlock::new_plain("crate::mod::impl"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(
@@ -223,9 +217,7 @@ mod tests {
 
         // Message
         let log = StackTraceBlock::new().message(TextBlock::new_plain("this is a message"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(
@@ -238,9 +230,7 @@ mod tests {
             .file_location(TextBlock::new_plain("/path/to/\n/file.rs:15:24"))
             .code_path(TextBlock::new_plain("crate::mod::\n::impl"))
             .message(TextBlock::new_plain("this is a\nmessage"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(

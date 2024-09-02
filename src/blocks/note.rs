@@ -102,9 +102,7 @@ mod tests {
     fn test_styled() {
         let log = NoteBlock::new()
             .text(TextBlock::new().add_styled_text("NOTE", Style::new().underline().yellow()));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m= \u{1b}[0m\u{1b}[4;33mNOTE\u{1b}[0m");

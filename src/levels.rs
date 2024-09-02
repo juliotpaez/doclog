@@ -9,7 +9,7 @@ const TRACE: LogLevel = LogLevel::new(10, Color::Fixed(102), "trace", '•');
 const DEBUG: LogLevel = LogLevel::new(20, Color::Green, "debug", '•');
 
 /// The info log level. Level = 30.
-const INFO: LogLevel = LogLevel::new(30, Color::Blue, "info", 'ℹ');
+const INFO: LogLevel = LogLevel::new(30, Color::Blue, "info", '•');
 
 /// The warn log level. Level = 40.
 const WARN: LogLevel = LogLevel::new(40, Color::Yellow, "warn", '⚠');

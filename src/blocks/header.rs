@@ -365,9 +365,7 @@ mod tests {
             .unwrap_or("undefined")
             .to_string();
         let log = HeaderBlock::new().show_thread(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(
@@ -382,9 +380,7 @@ mod tests {
             .location(TextBlock::new_plain("src/blocks/header.rs:3:26"))
             .show_date(true)
             .show_thread(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
         let date = &text[124..][..24];
 
         println!("{}", text);

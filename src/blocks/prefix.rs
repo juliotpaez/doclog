@@ -138,9 +138,7 @@ mod tests {
                     Style::new().bold().red(),
                 )),
             );
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;34m | -> \u{1b}[0m\u{1b}[1;31mThe message\n\u{1b}[0m\u{1b}[1;34m | -> \u{1b}[0m\u{1b}[1;31min\n\u{1b}[0m\u{1b}[1;34m | -> \u{1b}[0m\u{1b}[1;31mmultiple\n\u{1b}[0m\u{1b}[1;34m | -> \u{1b}[0m\u{1b}[1;31mlines\u{1b}[0m");

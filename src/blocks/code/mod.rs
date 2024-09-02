@@ -54,9 +54,8 @@ impl<'a> CodeBlock<'a> {
 
     // GETTERS ----------------------------------------------------------------
 
-    /// Returns the actual code the block will use.
-    #[inline(always)]
-    fn max_line_to_print(&self) -> usize {
+    /// Returns the maximum line to print.
+    pub(crate) fn max_line(&self) -> usize {
         self.sections
             .last()
             .map(|v| v.end.line.saturating_add(self.next_lines))
@@ -385,7 +384,7 @@ impl<'a> CodeBlock<'a> {
         self
     }
 
-    fn print_with_options(&self, printer: &mut Printer<'a>, max_line_digits: usize) {
+    pub(crate) fn print_with_options(&self, printer: &mut Printer<'a>, max_line_digits: usize) {
         // Title
         let code_indent = TextBlock::new_plain(build_space_string(max_line_digits + 1));
 
@@ -927,7 +926,7 @@ impl<'a> Printable<'a> for CodeBlock<'a> {
     where
         'a: 's,
     {
-        let max_line_digits = format!("{}", self.max_line_to_print()).len();
+        let max_line_digits = format!("{}", self.max_line()).len();
 
         self.print_with_options(printer, max_line_digits)
     }
@@ -964,35 +963,184 @@ fn group_sections_in_same_line<'s, 'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::{HeaderBlock, PrefixBlock};
-    use crate::{Log, LogContent, LogLevel};
+    use crate::LogLevel;
 
-    // TODO: add tests.
     #[test]
     fn test_plain() {
         let code =
             "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10";
 
-        // All
+        // Empty
         let log = CodeBlock::new(code);
-        let text = log
-            .title("This is\na title")
-            .final_message("This is\na message")
-            .file_path("a/b/c")
-            // // Line 3
-            // .highlight_section(14..15, None)
-            // .highlight_cursor(15, None)
-            // .highlight_section(15..16, None)
-            // .highlight_cursor(16, None)
-            // .highlight_section(16..20, None)
-            // .highlight_cursor(20, None)
-            // .highlight_section(20..21, None)
-            // // Line 6
-            // .highlight_section(36..41, None)
-            // // Line 8
-            // .highlight_section(52..58, None)
-            // .highlight_cursor(58, None)
-            // .highlight_cursor(59, None)
+        let text = log.print_to_string(LogLevel::trace(), PrinterFormat::Plain);
+
+        assert_eq!(text, "• ╭─\n  ╰─");
+
+        // Title
+        let log = CodeBlock::new(code).title("This is\na title");
+        let text = log.print_to_string(LogLevel::debug(), PrinterFormat::Plain);
+
+        assert_eq!(text, "• This is\n  a title\n  ╭─\n  ╰─");
+
+        // File path.
+        let log = CodeBlock::new(code).file_path("This is\na file path");
+        let text = log.print_to_string(LogLevel::info(), PrinterFormat::Plain);
+
+        assert_eq!(text, "• ╭─[This is a file path]\n  ╰─");
+
+        // Final message.
+        let log = CodeBlock::new(code).final_message("This is\na message");
+        let text = log.print_to_string(LogLevel::warn(), PrinterFormat::Plain);
+
+        assert_eq!(text, "⚠ ╭─\n  ╰─ This is\n     a message");
+
+        // Sections
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, "× ╭─\n3 │    L·i·ne 3·\n  │    ^^^^╰──╯^^\n ···    \n6 │    Line 6\n  │     ╰───╯\n ···    \n8 │    Line 8\n  │       ╰────▶\n9 │    Li·n·e 9\n  │  ▶──╯^ ^\n  ╰─");
+
+        // Sections + show_new_line_chars
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .show_new_line_chars(true);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, "× ╭─\n3 │    L·i·ne 3·↩\n  │    ^^^^╰──╯^^\n ···    \n6 │    Line 6↩\n  │     ╰───╯\n ···    \n8 │    Line 8↩\n  │       ╰────▶\n9 │    Li·n·e 9↩\n  │  ▶──╯^ ^\n  ╰─");
+
+        // Sections + secondary_color
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .secondary_color(Color::BrightYellow);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, "× ╭─\n3 │    L·i·ne 3·\n  │    ^^^^╰──╯^^\n ···    \n6 │    Line 6\n  │     ╰───╯\n ···    \n8 │    Line 8\n  │       ╰────▶\n9 │    Li·n·e 9\n  │  ▶──╯^ ^\n  ╰─");
+
+        // Sections + previous_lines
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .previous_lines(1);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, "× ╭─\n2 │    Line 2\n3 │    L·i·ne 3·\n  │    ^^^^╰──╯^^\n ···    \n6 │    Line 6\n  │     ╰───╯\n ···    \n8 │    Line 8\n  │       ╰────▶\n9 │    Li·n·e 9\n  │  ▶──╯^ ^\n  ╰─");
+
+        // Sections + next_lines
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .next_lines(1);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, " × ╭─\n 3 │    L·i·ne 3·\n   │    ^^^^╰──╯^^\n  ···    \n 6 │    Line 6\n   │     ╰───╯\n  ···    \n 8 │    Line 8\n   │       ╰────▶\n 9 │    Li·n·e 9\n   │  ▶──╯^ ^\n10 │    Line 10\n   ╰─");
+
+        // Sections + middle_lines
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .middle_lines(1);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, "× ╭─\n3 │    L·i·ne 3·\n  │    ^^^^╰──╯^^\n ···    \n6 │    Line 6\n  │     ╰───╯\n7 │    Line 6\n8 │    Line 8\n  │       ╰────▶\n9 │    Li·n·e 9\n  │  ▶──╯^ ^\n  ╰─");
+
+        // Sections with messages.
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section_message(14..15, None, "This is\na message")
+            .highlight_cursor_message(15, None, "This is\na message")
+            .highlight_section_message(15..16, None, "This is\na message")
+            .highlight_cursor_message(16, None, "This is\na message")
+            .highlight_section_message(16..20, None, "This is\na message")
+            .highlight_cursor_message(20, None, "This is\na message")
+            .highlight_section_message(20..21, None, "This is\na message")
+            // Line 6
+            .highlight_section_message(36..41, None, "This is\na message")
+            // Line 8
+            .highlight_section_message(52..58, None, "This is\na message")
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, "× ╭─\n3 │    L·i·ne 3·\n  │    ││││├──╯│╰── This is\n  │    │││││   │    a message\n  │    │││││   ╰── This is\n  │    │││││       a message\n  │    ││││╰── This is\n  │    ││││    a message\n  │    │││╰── This is\n  │    │││    a message\n  │    ││╰── This is\n  │    ││    a message\n  │    │╰── This is\n  │    │    a message\n  │    ╰── This is\n  │        a message\n ···    \n6 │    Line 6\n  │     ╰───┴── This is\n  │             a message\n ···    \n8 │    Line 8\n  │       ╰────▶\n9 │    Li·n·e 9\n  │  ▶─┬╯^ ^\n  │    ╰── This is\n  │        a message\n  ╰─");
+
+        // Sections with messages + align_messages.
+        let log = CodeBlock::new(code)
             // Line 3
             .highlight_section_message(14..15, None, "This is\na message")
             .highlight_cursor_message(15, None, "This is\na message")
@@ -1007,15 +1155,285 @@ mod tests {
             .highlight_section_message(52..58, None, "This is\na message")
             .highlight_cursor(58, None)
             .highlight_cursor(59, None)
-            // .previous_lines(1)
-            // .next_lines(1)
-            // .middle_lines(50)
-            .show_new_line_chars(false)
-            .align_messages(false)
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+            .align_messages(true);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, "× ╭─\n3 │    L·i·ne 3·\n  │    ││││├──╯│╰── This is\n  │    │││││   │    a message\n  │    │││││   ╰─── This is\n  │    │││││        a message\n  │    ││││╰─────── This is\n  │    ││││         a message\n  │    │││╰──────── This is\n  │    │││          a message\n  │    ││╰───────── This is\n  │    ││           a message\n  │    │╰────────── This is\n  │    │            a message\n  │    ╰─────────── This is\n  │                 a message\n ···    \n6 │    Line 6\n  │     ╰───┴── This is\n  │             a message\n ···    \n8 │    Line 8\n  │       ╰────▶\n9 │    Li·n·e 9\n  │  ▶─┬╯^ ^\n  │    ╰── This is\n  │        a message\n  ╰─");
+
+        // All
+        let log = CodeBlock::new(code)
+            .title("This is\na title")
+            .file_path("This is\na file path")
+            .final_message("This is\na message")
+            // Line 3
+            .highlight_section_message(14..15, None, "This is\na message")
+            .highlight_cursor_message(15, None, "This is\na message")
+            .highlight_section_message(15..16, None, "This is\na message")
+            .highlight_cursor_message(16, None, "This is\na message")
+            .highlight_section_message(16..20, None, "This is\na message")
+            .highlight_cursor_message(20, None, "This is\na message")
+            .highlight_section_message(20..21, None, "This is\na message")
+            // Line 6
+            .highlight_section_message(36..41, None, "This is\na message")
+            // Line 8
+            .highlight_section_message(52..58, None, "This is\na message")
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .show_new_line_chars(true)
+            .secondary_color(Color::BrightYellow)
+            .previous_lines(1)
+            .next_lines(1)
+            .middle_lines(1)
+            .align_messages(true);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, " × This is\n   a title\n   ╭─[This is a file path]\n 2 │    Line 2↩\n 3 │    L·i·ne 3·↩\n   │    ││││├──╯│╰── This is\n   │    │││││   │    a message\n   │    │││││   ╰─── This is\n   │    │││││        a message\n   │    ││││╰─────── This is\n   │    ││││         a message\n   │    │││╰──────── This is\n   │    │││          a message\n   │    ││╰───────── This is\n   │    ││           a message\n   │    │╰────────── This is\n   │    │            a message\n   │    ╰─────────── This is\n   │                 a message\n  ···    \n 6 │    Line 6↩\n   │     ╰───┴── This is\n   │             a message\n 7 │    Line 6↩\n 8 │    Line 8↩\n   │       ╰────▶\n 9 │    Li·n·e 9↩\n   │  ▶─┬╯^ ^\n   │    ╰── This is\n   │        a message\n10 │    Line 10\n   ╰─ This is\n      a message");
+    }
+
+    #[test]
+    fn test_styled() {
+        let code =
+            "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10";
+
+        // Empty
+        let log = CodeBlock::new(code);
+        let text = log.print_to_string(LogLevel::trace(), PrinterFormat::Styled);
 
         println!("{}", text);
-        assert_eq!(text, "╭─▶ This is\n│   a message\n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1]");
+        assert_eq!(
+            text,
+            "\u{1b}[1;38;5;102m• \u{1b}[0m\u{1b}[1m╭─\n  ╰─\u{1b}[0m"
+        );
+
+        // Title
+        let log = CodeBlock::new(code).title("This is\na title");
+        let text = log.print_to_string(LogLevel::debug(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(
+            text,
+            "\u{1b}[1;32m• \u{1b}[0mThis is\n  a title\n  \u{1b}[1m╭─\n  ╰─\u{1b}[0m"
+        );
+
+        // File path.
+        let log = CodeBlock::new(code).file_path("This is\na file path");
+        let text = log.print_to_string(LogLevel::info(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;34m• \u{1b}[0m\u{1b}[1m╭─[\u{1b}[0mThis is a file path\u{1b}[1m]\n  ╰─\u{1b}[0m");
+
+        // Final message.
+        let log = CodeBlock::new(code).final_message("This is\na message");
+        let text = log.print_to_string(LogLevel::warn(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(
+            text,
+            "\u{1b}[1;33m⚠ \u{1b}[0m\u{1b}[1m╭─\n  ╰─ \u{1b}[0mThis is\n     a message"
+        );
+
+        // Sections
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m× \u{1b}[0m\u{1b}[1m╭─\n\u{1b}[0m\u{1b}[1;90m3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;35m·\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m╰──╯\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\n  \u{1b}[0m\u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───╯\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8\n  \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9\n  \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶──╯\u{1b}[0m\u{1b}[1;35m^ \u{1b}[0m\u{1b}[1;31m^\n  \u{1b}[0m\u{1b}[1m╰─\u{1b}[0m");
+
+        // Sections + show_new_line_chars
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .show_new_line_chars(true);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m× \u{1b}[0m\u{1b}[1m╭─\n\u{1b}[0m\u{1b}[1;90m3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31m↩\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m╰──╯\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\u{1b}[0m↩\n  \u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───╯\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8↩\n  \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9↩\n  \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶──╯\u{1b}[0m\u{1b}[1;35m^ \u{1b}[0m\u{1b}[1;31m^\n  \u{1b}[0m\u{1b}[1m╰─\u{1b}[0m");
+
+        // Sections + secondary_color
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .secondary_color(Color::BrightYellow);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m× \u{1b}[0m\u{1b}[1m╭─\n\u{1b}[0m\u{1b}[1;90m3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;93m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;93m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;93m·\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;93m^\u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;93m^\u{1b}[0m\u{1b}[1;31m╰──╯\u{1b}[0m\u{1b}[1;93m^\u{1b}[0m\u{1b}[1;31m^\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\n  \u{1b}[0m\u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───╯\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8\n  \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;93m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9\n  \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶──╯\u{1b}[0m\u{1b}[1;93m^ \u{1b}[0m\u{1b}[1;31m^\n  \u{1b}[0m\u{1b}[1m╰─\u{1b}[0m");
+
+        // Sections + previous_lines
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .previous_lines(1);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m× \u{1b}[0m\u{1b}[1m╭─\n\u{1b}[0m\u{1b}[1;90m2 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLine 2\n\u{1b}[1;90m3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;35m·\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m╰──╯\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\n  \u{1b}[0m\u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───╯\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8\n  \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9\n  \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶──╯\u{1b}[0m\u{1b}[1;35m^ \u{1b}[0m\u{1b}[1;31m^\n  \u{1b}[0m\u{1b}[1m╰─\u{1b}[0m");
+
+        // Sections + next_lines
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .next_lines(1);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m × \u{1b}[0m\u{1b}[1m╭─\n\u{1b}[0m\u{1b}[1;90m 3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;35m·\n   \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m╰──╯\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\n  \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m 6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\n   \u{1b}[0m\u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───╯\n  \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m 8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8\n   \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m 9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9\n   \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶──╯\u{1b}[0m\u{1b}[1;35m^ \u{1b}[0m\u{1b}[1;31m^\n\u{1b}[0m\u{1b}[1;90m10 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLine 10\n   \u{1b}[1m╰─\u{1b}[0m");
+
+        // Sections + middle_lines
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section(14..15, None)
+            .highlight_cursor(15, None)
+            .highlight_section(15..16, None)
+            .highlight_cursor(16, None)
+            .highlight_section(16..20, None)
+            .highlight_cursor(20, None)
+            .highlight_section(20..21, None)
+            // Line 6
+            .highlight_section(36..41, None)
+            // Line 8
+            .highlight_section(52..58, None)
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .middle_lines(1);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m× \u{1b}[0m\u{1b}[1m╭─\n\u{1b}[0m\u{1b}[1;90m3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;35m·\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m╰──╯\u{1b}[0m\u{1b}[1;35m^\u{1b}[0m\u{1b}[1;31m^\n \u{1b}[0m\u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\n  \u{1b}[0m\u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───╯\n\u{1b}[0m\u{1b}[1;90m7 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLine 6\n\u{1b}[1;90m8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8\n  \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9\n  \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶──╯\u{1b}[0m\u{1b}[1;35m^ \u{1b}[0m\u{1b}[1;31m^\n  \u{1b}[0m\u{1b}[1m╰─\u{1b}[0m");
+
+        // Sections with messages.
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section_message(14..15, None, "This is\na message")
+            .highlight_cursor_message(15, None, "This is\na message")
+            .highlight_section_message(15..16, None, "This is\na message")
+            .highlight_cursor_message(16, None, "This is\na message")
+            .highlight_section_message(16..20, None, "This is\na message")
+            .highlight_cursor_message(20, None, "This is\na message")
+            .highlight_section_message(20..21, None, "This is\na message")
+            // Line 6
+            .highlight_section_message(36..41, None, "This is\na message")
+            // Line 8
+            .highlight_section_message(52..58, None, "This is\na message")
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m× \u{1b}[0m\u{1b}[1m╭─\n\u{1b}[0m\u{1b}[1;90m3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;35m·\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m├──╯\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│   \u{1b}[0m\u{1b}[1;35m│    \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│   \u{1b}[0m\u{1b}[1;35m╰── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│       \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│    \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m╰── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│    \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│    \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m╰── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│    \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n  \u{1b}[1m│        \u{1b}[0ma message\n \u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\n  \u{1b}[0m\u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───┴── \u{1b}[0mThis is\n  \u{1b}[1m│             \u{1b}[0ma message\n \u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8\n  \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9\n  \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶─┬╯\u{1b}[0m\u{1b}[1;35m^ \u{1b}[0m\u{1b}[1;31m^\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n  \u{1b}[1m│        \u{1b}[0ma message\n  \u{1b}[1m╰─\u{1b}[0m");
+
+        // Sections with messages + align_messages.
+        let log = CodeBlock::new(code)
+            // Line 3
+            .highlight_section_message(14..15, None, "This is\na message")
+            .highlight_cursor_message(15, None, "This is\na message")
+            .highlight_section_message(15..16, None, "This is\na message")
+            .highlight_cursor_message(16, None, "This is\na message")
+            .highlight_section_message(16..20, None, "This is\na message")
+            .highlight_cursor_message(20, None, "This is\na message")
+            .highlight_section_message(20..21, None, "This is\na message")
+            // Line 6
+            .highlight_section_message(36..41, None, "This is\na message")
+            // Line 8
+            .highlight_section_message(52..58, None, "This is\na message")
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .align_messages(true);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m× \u{1b}[0m\u{1b}[1m╭─\n\u{1b}[0m\u{1b}[1;90m3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;35m·\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m├──╯\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│   \u{1b}[0m\u{1b}[1;35m│    \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│   \u{1b}[0m\u{1b}[1;35m╰─── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│        \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m╰─────── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│         \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m╰──────── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m│          \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│\u{1b}[0m\u{1b}[1;31m╰───────── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m│           \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;35m╰────────── \u{1b}[0mThis is\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│            \u{1b}[0ma message\n  \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m╰─────────── \u{1b}[0mThis is\n  \u{1b}[1m│                 \u{1b}[0ma message\n \u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\n  \u{1b}[0m\u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───┴── \u{1b}[0mThis is\n  \u{1b}[1m│             \u{1b}[0ma message\n \u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8\n  \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;35m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9\n  \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶─┬╯\u{1b}[0m\u{1b}[1;35m^ \u{1b}[0m\u{1b}[1;31m^\n  \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n  \u{1b}[1m│        \u{1b}[0ma message\n  \u{1b}[1m╰─\u{1b}[0m");
+
+        // All
+        let log = CodeBlock::new(code)
+            .title("This is\na title")
+            .file_path("This is\na file path")
+            .final_message("This is\na message")
+            // Line 3
+            .highlight_section_message(14..15, None, "This is\na message")
+            .highlight_cursor_message(15, None, "This is\na message")
+            .highlight_section_message(15..16, None, "This is\na message")
+            .highlight_cursor_message(16, None, "This is\na message")
+            .highlight_section_message(16..20, None, "This is\na message")
+            .highlight_cursor_message(20, None, "This is\na message")
+            .highlight_section_message(20..21, None, "This is\na message")
+            // Line 6
+            .highlight_section_message(36..41, None, "This is\na message")
+            // Line 8
+            .highlight_section_message(52..58, None, "This is\na message")
+            .highlight_cursor(58, None)
+            .highlight_cursor(59, None)
+            .show_new_line_chars(true)
+            .secondary_color(Color::BrightYellow)
+            .previous_lines(1)
+            .next_lines(1)
+            .middle_lines(1)
+            .align_messages(true);
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(text, "\u{1b}[1;31m × \u{1b}[0mThis is\n   a title\n   \u{1b}[1m╭─[\u{1b}[0mThis is a file path\u{1b}[1m]\n\u{1b}[0m\u{1b}[1;90m 2 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLine 2↩\n\u{1b}[1;90m 3 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mL\u{1b}[0m\u{1b}[1;93m·\u{1b}[0m\u{1b}[1;31mi\u{1b}[0m\u{1b}[1;93m·\u{1b}[0m\u{1b}[1;31mne 3\u{1b}[0m\u{1b}[1;93m·\u{1b}[0m\u{1b}[1;31m↩\n   \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m├──╯\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│   \u{1b}[0m\u{1b}[1;93m│    \u{1b}[0ma message\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│   \u{1b}[0m\u{1b}[1;93m╰─── \u{1b}[0mThis is\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│        \u{1b}[0ma message\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m╰─────── \u{1b}[0mThis is\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│         \u{1b}[0ma message\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m╰──────── \u{1b}[0mThis is\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m│          \u{1b}[0ma message\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│\u{1b}[0m\u{1b}[1;31m╰───────── \u{1b}[0mThis is\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m│           \u{1b}[0ma message\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│\u{1b}[0m\u{1b}[1;93m╰────────── \u{1b}[0mThis is\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m│            \u{1b}[0ma message\n   \u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m╰─────────── \u{1b}[0mThis is\n   \u{1b}[1m│                 \u{1b}[0ma message\n  \u{1b}[1m···    \n\u{1b}[0m\u{1b}[1;90m 6 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mL\u{1b}[1;31mine 6\u{1b}[0m↩\n   \u{1b}[1m│     \u{1b}[0m\u{1b}[1;31m╰───┴── \u{1b}[0mThis is\n   \u{1b}[1m│             \u{1b}[0ma message\n\u{1b}[1;90m 7 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLine 6↩\n\u{1b}[1;90m 8 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLin\u{1b}[1;31me 8↩\n   \u{1b}[0m\u{1b}[1m│       \u{1b}[0m\u{1b}[1;31m╰────▶\n\u{1b}[0m\u{1b}[1;90m 9 \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31mLi\u{1b}[0m\u{1b}[1;93m·\u{1b}[0mn\u{1b}[1;31m·\u{1b}[0me 9↩\n   \u{1b}[1m│  \u{1b}[0m\u{1b}[1;31m▶─┬╯\u{1b}[0m\u{1b}[1;93m^ \u{1b}[0m\u{1b}[1;31m^\n   \u{1b}[0m\u{1b}[1m│    \u{1b}[0m\u{1b}[1;31m╰── \u{1b}[0mThis is\n   \u{1b}[1m│        \u{1b}[0ma message\n\u{1b}[1;90m10 \u{1b}[0m\u{1b}[1m│    \u{1b}[0mLine 10\n   \u{1b}[1m╰─ \u{1b}[0mThis is\n      a message");
     }
 }

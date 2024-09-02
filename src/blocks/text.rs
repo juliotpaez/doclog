@@ -177,9 +177,7 @@ mod tests {
             .add_styled_text("This is\na test", Style::new().bold().yellow())
             .add_plain_text("- plain")
             .add_styled_text(" - styled", Style::new().bold().red());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(

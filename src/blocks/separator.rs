@@ -1,6 +1,5 @@
 use crate::constants::HORIZONTAL_BAR;
 use crate::printer::{Printable, Printer, PrinterFormat};
-use crate::utils::whitespaces::build_space_string;
 use crate::LogLevel;
 use const_format::{concatcp, formatcp};
 use std::borrow::Cow;
@@ -42,6 +41,15 @@ impl SeparatorBlock {
         Self {
             width,
             character: HORIZONTAL_BAR,
+        }
+    }
+
+    /// Creates a new [SeparatorBlock] representing a white line.
+    #[inline(always)]
+    pub fn with_white() -> Self {
+        Self {
+            width: 0,
+            character: ' ',
         }
     }
 
@@ -93,7 +101,8 @@ impl<'a> Printable<'a> for SeparatorBlock {
         }
 
         let separator = match self.character {
-            ' ' => build_space_string(self.width),
+            // Whitespaces are not seen in the terminal, so we use an empty string to skip it.
+            c if c.is_whitespace() => Cow::Borrowed(""),
             HORIZONTAL_BAR => {
                 if self.width < N_HORIZONTAL_BARS {
                     Cow::Borrowed(&HORIZONTAL_BARS[0..(self.width * HORIZONTAL_BAR.len_utf8())])

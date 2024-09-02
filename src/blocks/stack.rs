@@ -469,18 +469,14 @@ mod tests {
     fn test_styled() {
         // Empty
         let log = StackBlock::new();
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─ \n╰─\u{1b}[0m");
 
         // Message
         let log = StackBlock::new().message(TextBlock::new_plain("This is\na message"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mThis is\n\u{1b}[1;31m│   \u{1b}[0ma message\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -499,9 +495,7 @@ mod tests {
                     .file_location(TextBlock::new_plain("/a/b/c/2"))
                     .code_path(TextBlock::new_plain("crate::x::2")),
             );
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─ \n│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -521,9 +515,7 @@ mod tests {
                     .code_path(TextBlock::new_plain("crate::x::2")),
             )
             .show_stack_numbers(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─ \n│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -544,9 +536,7 @@ mod tests {
                     .code_path(TextBlock::new_plain("crate::x::2")),
             )
             .show_stack_numbers(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mThis is\n\u{1b}[1;31m│   \u{1b}[0ma message\n\u{1b}[1;31m│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -685,9 +675,7 @@ mod tests {
 
         // Empty
         let log = StackBlock::new().cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─ \n├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber2\n\u{1b}[1;31m│  [4] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [3] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -696,9 +684,7 @@ mod tests {
         let log = StackBlock::new()
             .message(TextBlock::new_plain("This is\na message"))
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mThis is\n\u{1b}[1;31m│   \u{1b}[0ma message\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber2\n\u{1b}[1;31m│  [4] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [3] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -718,9 +704,7 @@ mod tests {
                     .code_path(TextBlock::new_plain("crate::x::2")),
             )
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─ \n│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber2\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -741,9 +725,7 @@ mod tests {
             )
             .show_stack_numbers(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─ \n│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber2\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -765,9 +747,7 @@ mod tests {
             )
             .show_stack_numbers(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mThis is\n\u{1b}[1;31m│   \u{1b}[0ma message\n\u{1b}[1;31m│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Caused by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber2\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -800,9 +780,7 @@ mod tests {
         let log = StackBlock::new()
             .wrapped_by_format(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mCause\n\u{1b}[1;31m│   \u{1b}[0mnumber2\n\u{1b}[1;31m│  [4] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [3] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \n╰─\u{1b}[0m");
@@ -812,9 +790,7 @@ mod tests {
             .message(TextBlock::new_plain("This is\na message"))
             .wrapped_by_format(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mCause\n\u{1b}[1;31m│   \u{1b}[0mnumber2\n\u{1b}[1;31m│  [4] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [3] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -835,9 +811,7 @@ mod tests {
             )
             .wrapped_by_format(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mCause\n\u{1b}[1;31m│   \u{1b}[0mnumber2\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \n│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -859,9 +833,7 @@ mod tests {
             .show_stack_numbers(true)
             .wrapped_by_format(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mCause\n\u{1b}[1;31m│   \u{1b}[0mnumber2\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \n│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
@@ -884,9 +856,7 @@ mod tests {
             .show_stack_numbers(true)
             .wrapped_by_format(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Styled)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
 
         println!("{}", text);
         assert_eq!(text, "\u{1b}[1;31m╭─▶ \u{1b}[0mCause\n\u{1b}[1;31m│   \u{1b}[0mnumber2\n\u{1b}[1;31m│  [6] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [5] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \u{1b}[0mCause\n\u{1b}[1;31m│     \u{1b}[0mnumber1\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│   at \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m├───▶ Wrapped by: \u{1b}[0mThis is\n\u{1b}[1;31m│     \u{1b}[0ma message\n\u{1b}[1;31m│  [2] \u{1b}[0m/a/b/c\u{1b}[1;31m(\u{1b}[0mcrate::x\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message\n\u{1b}[1;31m│  [1] \u{1b}[0m/a/b/c/2\u{1b}[1;31m(\u{1b}[0mcrate::x::2\u{1b}[1;31m) - \u{1b}[0mThis is a \n\u{1b}[1;31m│     \u{1b}[0m message2\n\u{1b}[1;31m╰─\u{1b}[0m");
