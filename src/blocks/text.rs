@@ -142,6 +142,18 @@ impl<'a> Display for TextBlock<'a> {
 
 impl<'a> From<&'a str> for TextBlock<'a> {
     fn from(text: &'a str) -> Self {
+        TextBlock::new_plain(Cow::Borrowed(text))
+    }
+}
+
+impl<'a> From<String> for TextBlock<'a> {
+    fn from(text: String) -> Self {
+        TextBlock::new_plain(Cow::Owned(text))
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for TextBlock<'a> {
+    fn from(text: Cow<'a, str>) -> Self {
         TextBlock::new_plain(text)
     }
 }
