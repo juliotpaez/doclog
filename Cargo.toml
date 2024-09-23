@@ -1,6 +1,6 @@
 [package]
 name = "doclog"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Julio Treviño Páez <julio.tpaez@gmail.com>"]
 description = "A Rust log library based on Rust's compiler logs"
 repository = "https://github.com/juliotpaez/doclog"
