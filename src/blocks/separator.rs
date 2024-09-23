@@ -15,7 +15,7 @@ const _: () = {
 /// A block that prints a line separator repeating a character.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SeparatorBlock {
-    width: usize,
+    pub width: usize,
     character: char,
 }
 
@@ -55,12 +55,6 @@ impl SeparatorBlock {
 
     // GETTERS ----------------------------------------------------------------
 
-    /// The width of the separator.
-    #[inline(always)]
-    pub fn get_width(&self) -> usize {
-        self.width
-    }
-
     /// The character used to repeat the separator.
     #[inline(always)]
     pub fn get_character(&self) -> char {
@@ -68,6 +62,21 @@ impl SeparatorBlock {
     }
 
     // SETTERS ----------------------------------------------------------------
+
+    /// Sets the character used to repeat the separator.
+    ///
+    /// # Panic
+    /// This method panics if `character` is a newline character.
+    #[inline(always)]
+    pub fn set_character(&mut self, character: char) {
+        assert_ne!(
+            character, '\n',
+            "The character cannot be a newline character."
+        );
+        self.character = character;
+    }
+
+    // BUILDERS ---------------------------------------------------------------
 
     /// Sets the width of the separator.
     #[inline(always)]
@@ -137,23 +146,17 @@ mod tests {
     #[test]
     fn test_plain() {
         let log = SeparatorBlock::new(0, '/');
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "");
 
         let log = SeparatorBlock::new(10, '/');
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "//////////");
 
         let log = SeparatorBlock::with_width(10);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "──────────");
     }

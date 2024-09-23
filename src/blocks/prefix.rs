@@ -9,8 +9,8 @@ use std::fmt::Display;
 /// replaced by whitespaces to only occupy one line.
 #[derive(Default, Debug, Clone)]
 pub struct PrefixBlock<'a> {
-    prefix: TextBlock<'a>,
-    content: Box<LogContent<'a>>,
+    pub prefix: TextBlock<'a>,
+    pub content: Box<LogContent<'a>>,
 }
 
 impl<'a> PrefixBlock<'a> {
@@ -22,33 +22,7 @@ impl<'a> PrefixBlock<'a> {
         Self::default()
     }
 
-    // GETTERS ----------------------------------------------------------------
-
-    /// Returns the prefix.
-    #[inline(always)]
-    pub fn get_prefix(&self) -> &TextBlock<'a> {
-        &self.prefix
-    }
-
-    /// Returns a mutable reference to the prefix.
-    #[inline(always)]
-    pub fn get_prefix_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.prefix
-    }
-
-    /// Returns the inner content.
-    #[inline(always)]
-    pub fn get_content(&self) -> &LogContent<'a> {
-        &self.content
-    }
-
-    /// Returns a mutable reference to the inner content.
-    #[inline(always)]
-    pub fn get_content_mut(&mut self) -> &mut LogContent<'a> {
-        &mut self.content
-    }
-
-    // SETTERS ----------------------------------------------------------------
+    // BUILDERS ---------------------------------------------------------------
 
     /// Sets the prefix.
     #[inline(always)]
@@ -84,7 +58,7 @@ impl<'a> Printable<'a> for PrefixBlock<'a> {
         self.content.print(&mut content_printer);
 
         let prefix = self.prefix.single_lined();
-        content_printer.indent(prefix.get_sections(), true);
+        content_printer.indent(&prefix.sections, true);
         printer.append(content_printer);
     }
 }
@@ -118,9 +92,7 @@ mod tests {
                     Style::new().bold().red(),
                 )),
             );
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(
             text,

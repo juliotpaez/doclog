@@ -12,9 +12,9 @@ use yansi::Style;
 /// replaced by whitespaces to only occupy one line.
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct StackTraceBlock<'a> {
-    file_location: TextBlock<'a>,
-    code_path: TextBlock<'a>,
-    message: TextBlock<'a>,
+    pub file_location: TextBlock<'a>,
+    pub code_path: TextBlock<'a>,
+    pub message: TextBlock<'a>,
 }
 
 impl<'a> StackTraceBlock<'a> {
@@ -24,39 +24,7 @@ impl<'a> StackTraceBlock<'a> {
         Self::default()
     }
 
-    // GETTERS ----------------------------------------------------------------
-
-    /// Returns the file location.
-    pub fn get_file_location(&self) -> &TextBlock<'a> {
-        &self.file_location
-    }
-
-    /// Returns a mutable reference to the file location.
-    pub fn get_file_location_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.file_location
-    }
-
-    /// Returns the code path.
-    pub fn get_code_path(&self) -> &TextBlock<'a> {
-        &self.code_path
-    }
-
-    /// Returns a mutable reference to the code path.
-    pub fn get_inner_code_path_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.code_path
-    }
-
-    /// Returns the message.
-    pub fn get_message(&self) -> &TextBlock<'a> {
-        &self.message
-    }
-
-    /// Returns a mutable reference to the message.
-    pub fn get_message_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.message
-    }
-
-    // SETTERS ----------------------------------------------------------------
+    // BUILDERS ---------------------------------------------------------------
 
     /// Sets the file location.
     pub fn file_location(mut self, file_location: impl Into<TextBlock<'a>>) -> Self {
@@ -142,34 +110,26 @@ mod tests {
     fn test_plain() {
         // Empty
         let log = StackTraceBlock::new();
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "<unknown location>");
 
         // Location
         let log =
             StackTraceBlock::new().file_location(TextBlock::new_plain("/path/to/file.rs:15:24"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "/path/to/file.rs:15:24");
 
         // Inner path
         let log = StackTraceBlock::new().code_path(TextBlock::new_plain("crate::mod::impl"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "<unknown location>(crate::mod::impl)");
 
         // Message
         let log = StackTraceBlock::new().message(TextBlock::new_plain("this is a message"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "<unknown location> - this is a message");
 
@@ -178,9 +138,7 @@ mod tests {
             .file_location(TextBlock::new_plain("/path/to/\n/file.rs:15:24"))
             .code_path(TextBlock::new_plain("crate::mod::\n::impl"))
             .message(TextBlock::new_plain("this is a\nmessage"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(
             text,

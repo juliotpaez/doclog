@@ -7,7 +7,7 @@ use std::fmt::Display;
 /// A list of log elements.
 #[derive(Default, Debug, Clone)]
 pub struct LogContent<'a> {
-    blocks: SmallVec<[LogBlock<'a>; 3]>,
+    pub blocks: SmallVec<[LogBlock<'a>; 3]>,
 }
 
 impl<'a> LogContent<'a> {
@@ -16,18 +16,6 @@ impl<'a> LogContent<'a> {
     /// Builds a new content.
     pub fn new() -> Self {
         Self::default()
-    }
-
-    // GETTERS ----------------------------------------------------------------
-
-    /// Returns the list of log blocks.
-    pub fn blocks(&self) -> &[LogBlock<'a>] {
-        &self.blocks
-    }
-
-    /// Returns a mutable reference to the list of log blocks.
-    pub fn blocks_mut(&mut self) -> &mut SmallVec<[LogBlock<'a>; 3]> {
-        &mut self.blocks
     }
 
     // METHODS ----------------------------------------------------------------

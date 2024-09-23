@@ -21,15 +21,15 @@ use yansi::{Color, Style};
 pub struct CodeBlock<'a> {
     code: Cow<'a, str>,
     sections: Vec<CodeSection<'a>>,
-    title: TextBlock<'a>,
-    file_path: TextBlock<'a>,
-    final_message: TextBlock<'a>,
-    show_new_line_chars: bool,
-    secondary_color: Color,
-    previous_lines: usize,
-    next_lines: usize,
-    middle_lines: usize,
-    align_messages: bool,
+    pub title: TextBlock<'a>,
+    pub file_path: TextBlock<'a>,
+    pub final_message: TextBlock<'a>,
+    pub show_new_line_chars: bool,
+    pub secondary_color: Color,
+    pub previous_lines: usize,
+    pub next_lines: usize,
+    pub middle_lines: usize,
+    pub align_messages: bool,
 }
 
 impl<'a> CodeBlock<'a> {
@@ -64,7 +64,7 @@ impl<'a> CodeBlock<'a> {
 
     /// Returns the actual code the block will use.
     #[inline(always)]
-    pub fn get_content(&self) -> &str {
+    pub fn get_code(&self) -> &str {
         &self.code
     }
 
@@ -74,79 +74,7 @@ impl<'a> CodeBlock<'a> {
         &self.sections
     }
 
-    /// Returns the title.
-    #[inline(always)]
-    pub fn get_title(&self) -> &TextBlock<'a> {
-        &self.title
-    }
-
-    /// Returns a mutable reference to the title.
-    #[inline(always)]
-    pub fn get_title_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.title
-    }
-
-    /// Returns the file path.
-    #[inline(always)]
-    pub fn get_file_path(&self) -> &TextBlock<'a> {
-        &self.file_path
-    }
-
-    /// Returns a mutable reference to the file path.
-    #[inline(always)]
-    pub fn get_file_path_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.file_path
-    }
-
-    /// Returns the final message.
-    #[inline(always)]
-    pub fn get_final_message(&self) -> &TextBlock<'a> {
-        &self.final_message
-    }
-
-    /// Returns a mutable reference to the final message.
-    #[inline(always)]
-    pub fn get_final_message_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.final_message
-    }
-
-    /// Returns whether to show new line chars '\n' as '↩' or not.
-    #[inline(always)]
-    pub fn get_show_new_line_chars(&self) -> bool {
-        self.show_new_line_chars
-    }
-
-    /// Returns the secondary color to highlight blocks.
-    #[inline(always)]
-    pub fn get_secondary_color(&self) -> Color {
-        self.secondary_color
-    }
-
-    /// Returns the number of lines to show before all sections.
-    #[inline(always)]
-    pub fn get_previous_lines(&self) -> usize {
-        self.previous_lines
-    }
-
-    /// Returns the number of lines to show after all sections.
-    #[inline(always)]
-    pub fn get_next_lines(&self) -> usize {
-        self.next_lines
-    }
-
-    /// Returns the number of lines to show in the middle of two sections.
-    #[inline(always)]
-    pub fn get_middle_lines(&self) -> usize {
-        self.middle_lines
-    }
-
-    /// Returns whether to align messages or not.
-    #[inline(always)]
-    pub fn get_align_messages(&self) -> bool {
-        self.align_messages
-    }
-
-    // SETTERS ----------------------------------------------------------------
+    // BUILDERS ---------------------------------------------------------------
 
     /// Sets the title.
     #[inline(always)]
@@ -401,7 +329,7 @@ impl<'a> CodeBlock<'a> {
             let mut title_printer = printer.derive();
 
             self.title.print(&mut title_printer);
-            title_printer.indent(code_indent.get_sections(), false);
+            title_printer.indent(&code_indent.sections, false);
             printer.append(title_printer);
         }
 
@@ -661,7 +589,7 @@ impl<'a> CodeBlock<'a> {
 
                                 let mut message_printer = printer.derive();
                                 section.message.print(&mut message_printer);
-                                message_printer.indent(prefix.get_sections(), false);
+                                message_printer.indent(&prefix.sections, false);
                                 printer.append(message_printer);
                             } else {
                                 if section.message.is_empty() {
@@ -792,7 +720,7 @@ impl<'a> CodeBlock<'a> {
 
                                     let mut message_printer = printer.derive();
                                     section.message.print(&mut message_printer);
-                                    message_printer.indent(prefix.get_sections(), false);
+                                    message_printer.indent(&prefix.sections, false);
                                     printer.append(message_printer);
                                     break;
                                 }
@@ -894,11 +822,11 @@ impl<'a> CodeBlock<'a> {
                 let mut message_printer = final_line_printer.derive();
 
                 self.final_message.print(&mut message_printer);
-                message_printer.indent(message_indent.get_sections(), false);
+                message_printer.indent(&message_indent.sections, false);
                 final_line_printer.append(message_printer);
             }
 
-            final_line_printer.indent(code_indent.get_sections(), true);
+            final_line_printer.indent(&code_indent.sections, true);
             printer.append_lines(final_line_printer);
         }
     }

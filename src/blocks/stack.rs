@@ -15,11 +15,13 @@ use yansi::Style;
 /// An error stack block.
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct StackBlock<'a> {
-    message: TextBlock<'a>,
-    traces: Vec<StackTraceBlock<'a>>,
-    cause: Option<Box<StackBlock<'a>>>,
-    show_stack_numbers: bool,
-    wrapped_by_format: bool,
+    pub message: TextBlock<'a>,
+    pub traces: Vec<StackTraceBlock<'a>>,
+    pub cause: Option<Box<StackBlock<'a>>>,
+    pub show_stack_numbers: bool,
+
+    /// Whether to print the stack in the wrapped-by format.
+    pub wrapped_by_format: bool,
 }
 
 impl<'a> StackBlock<'a> {
@@ -31,57 +33,7 @@ impl<'a> StackBlock<'a> {
         StackBlock::default()
     }
 
-    // GETTERS ----------------------------------------------------------------
-
-    /// Returns the message.
-    #[inline(always)]
-    pub fn get_message(&self) -> &TextBlock<'a> {
-        &self.message
-    }
-
-    /// Returns a mutable reference to the message.
-    #[inline(always)]
-    pub fn get_message_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.message
-    }
-
-    /// Returns the traces.
-    #[inline(always)]
-    pub fn get_traces(&self) -> &[StackTraceBlock<'a>] {
-        &self.traces
-    }
-
-    /// Returns a mutable reference to the traces.
-    #[inline(always)]
-    pub fn get_traces_mut(&mut self) -> &mut Vec<StackTraceBlock<'a>> {
-        &mut self.traces
-    }
-
-    /// Returns the cause.
-    #[inline(always)]
-    pub fn get_cause(&self) -> &Option<Box<StackBlock<'a>>> {
-        &self.cause
-    }
-
-    /// Returns a mutable reference to the cause.
-    #[inline(always)]
-    pub fn get_cause_mut(&mut self) -> &mut Option<Box<StackBlock<'a>>> {
-        &mut self.cause
-    }
-
-    /// Returns whether to show stack numbers.
-    #[inline(always)]
-    pub fn get_show_stack_numbers(&self) -> bool {
-        self.show_stack_numbers
-    }
-
-    /// Returns whether to print the stack in the wrapped-by format.
-    #[inline(always)]
-    pub fn get_wrapped_by_format(&self) -> bool {
-        self.wrapped_by_format
-    }
-
-    // SETTERS ----------------------------------------------------------------
+    // BUILDERS ---------------------------------------------------------------
 
     /// Sets the message.
     #[inline(always)]
@@ -101,13 +53,6 @@ impl<'a> StackBlock<'a> {
     #[inline(always)]
     pub fn cause(mut self, cause: StackBlock<'a>) -> Self {
         self.cause = Some(Box::new(cause));
-        self
-    }
-
-    /// Removes the cause.
-    #[inline(always)]
-    pub fn clear_cause(mut self) -> Self {
-        self.cause = None;
         self
     }
 
@@ -180,7 +125,7 @@ impl<'a> StackBlock<'a> {
                 Style::new().bold().fg(printer.level.color()),
             );
 
-            message_printer.indent(prefix.get_sections(), false);
+            message_printer.indent(&prefix.sections, false);
             printer.append(message_printer);
         }
 
@@ -213,7 +158,7 @@ impl<'a> StackBlock<'a> {
             }
 
             trace.print(&mut trace_printer);
-            trace_printer.indent(full_trace_prefix.get_sections(), false);
+            trace_printer.indent(&full_trace_prefix.sections, false);
             printer.append(mem::replace(&mut trace_printer, printer.derive()));
         }
 
@@ -297,7 +242,7 @@ impl<'a> StackBlock<'a> {
                 Style::new().bold().fg(printer.level.color()),
             );
 
-            message_printer.indent(prefix.get_sections(), false);
+            message_printer.indent(&prefix.sections, false);
             printer.append(message_printer);
         }
 
@@ -327,7 +272,7 @@ impl<'a> StackBlock<'a> {
             }
 
             trace.print(&mut trace_printer);
-            trace_printer.indent(full_trace_prefix.get_sections(), false);
+            trace_printer.indent(&full_trace_prefix.sections, false);
             printer.append(mem::replace(&mut trace_printer, printer.derive()));
         }
 
@@ -387,17 +332,13 @@ mod tests {
     fn test_plain() {
         // Empty
         let log = StackBlock::new();
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─ \n╰─");
 
         // Message
         let log = StackBlock::new().message(TextBlock::new_plain("This is\na message"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─▶ This is\n│   a message\n╰─");
 
@@ -415,9 +356,7 @@ mod tests {
                     .file_location(TextBlock::new_plain("/a/b/c/2"))
                     .code_path(TextBlock::new_plain("crate::x::2")),
             );
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─ \n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
 
@@ -436,9 +375,7 @@ mod tests {
                     .code_path(TextBlock::new_plain("crate::x::2")),
             )
             .show_stack_numbers(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─ \n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
 
@@ -458,9 +395,7 @@ mod tests {
                     .code_path(TextBlock::new_plain("crate::x::2")),
             )
             .show_stack_numbers(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─▶ This is\n│   a message\n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
     }
@@ -567,9 +502,7 @@ mod tests {
 
         // Empty
         let log = StackBlock::new().cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─ \n├───▶ Caused by: Cause\n│     number1\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n├───▶ Caused by: Cause\n│     number2\n│  [4] /a/b/c(crate::x) - This is a \n│      message\n│  [3] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
 
@@ -577,9 +510,7 @@ mod tests {
         let log = StackBlock::new()
             .message(TextBlock::new_plain("This is\na message"))
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─▶ This is\n│   a message\n├───▶ Caused by: Cause\n│     number1\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n├───▶ Caused by: Cause\n│     number2\n│  [4] /a/b/c(crate::x) - This is a \n│      message\n│  [3] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
 
@@ -598,9 +529,7 @@ mod tests {
                     .code_path(TextBlock::new_plain("crate::x::2")),
             )
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─ \n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n├───▶ Caused by: Cause\n│     number1\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n├───▶ Caused by: Cause\n│     number2\n│  [6] /a/b/c(crate::x) - This is a \n│      message\n│  [5] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
 
@@ -620,9 +549,7 @@ mod tests {
             )
             .show_stack_numbers(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─ \n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1] /a/b/c/2(crate::x::2) - This is a \n│      message2\n├───▶ Caused by: Cause\n│     number1\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n├───▶ Caused by: Cause\n│     number2\n│  [6] /a/b/c(crate::x) - This is a \n│      message\n│  [5] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
 
@@ -643,9 +570,7 @@ mod tests {
             )
             .show_stack_numbers(true)
             .cause(cause.clone());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "╭─▶ This is\n│   a message\n│  [2] /a/b/c(crate::x) - This is a \n│      message\n│  [1] /a/b/c/2(crate::x::2) - This is a \n│      message2\n├───▶ Caused by: Cause\n│     number1\n│   at /a/b/c(crate::x) - This is a \n│      message\n│   at /a/b/c/2(crate::x::2) - This is a \n│      message2\n├───▶ Caused by: Cause\n│     number2\n│  [6] /a/b/c(crate::x) - This is a \n│      message\n│  [5] /a/b/c/2(crate::x::2) - This is a \n│      message2\n╰─");
     }

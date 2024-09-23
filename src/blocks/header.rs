@@ -22,11 +22,12 @@ use yansi::Style;
 /// ```
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct HeaderBlock<'a> {
-    title: TextBlock<'a>,
-    code: Cow<'a, str>,
-    location: TextBlock<'a>,
-    show_date: bool,
-    show_thread: bool,
+    pub title: TextBlock<'a>,
+    pub code: Cow<'a, str>,
+    pub location: TextBlock<'a>,
+    pub show_date: bool,
+    pub show_thread: bool,
+    pub extra_messages: Vec<TextBlock<'a>>,
 }
 
 impl<'a> HeaderBlock<'a> {
@@ -38,51 +39,7 @@ impl<'a> HeaderBlock<'a> {
         Self::default()
     }
 
-    // GETTERS ----------------------------------------------------------------
-
-    /// Returns the title.
-    #[inline(always)]
-    pub fn get_title(&self) -> &TextBlock<'a> {
-        &self.title
-    }
-
-    /// Returns a mutable reference to the title.
-    #[inline(always)]
-    pub fn get_title_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.title
-    }
-
-    /// Returns the code.
-    #[inline(always)]
-    pub fn get_code(&self) -> &str {
-        &self.code
-    }
-
-    /// Returns the location.
-    #[inline(always)]
-    pub fn get_location(&self) -> &TextBlock<'a> {
-        &self.location
-    }
-
-    /// Returns a mutable reference to the location.
-    #[inline(always)]
-    pub fn get_location_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.location
-    }
-
-    /// Returns whether the date should be shown.
-    #[inline(always)]
-    pub fn get_show_date(&self) -> bool {
-        self.show_date
-    }
-
-    /// Returns whether the thread should be shown.
-    #[inline(always)]
-    pub fn get_show_thread(&self) -> bool {
-        self.show_thread
-    }
-
-    // SETTERS ----------------------------------------------------------------
+    // BUILDERS ---------------------------------------------------------------
 
     /// Sets the title.
     #[inline(always)]
@@ -119,6 +76,13 @@ impl<'a> HeaderBlock<'a> {
         self
     }
 
+    /// Adds an extra message.
+    #[inline(always)]
+    pub fn add_extra_message(mut self, message: impl Into<TextBlock<'a>>) -> Self {
+        self.extra_messages.push(message.into());
+        self
+    }
+
     // METHODS ----------------------------------------------------------------
 
     /// Makes this type owned, i.e. changing the lifetime to `'static`.
@@ -129,6 +93,11 @@ impl<'a> HeaderBlock<'a> {
             location: self.location.make_owned(),
             show_date: self.show_date,
             show_thread: self.show_thread,
+            extra_messages: self
+                .extra_messages
+                .into_iter()
+                .map(|v| v.make_owned())
+                .collect(),
         }
     }
 }
@@ -160,7 +129,7 @@ impl<'a> Printable<'a> for HeaderBlock<'a> {
             let mut location_printer = printer.derive();
 
             self.title.print(&mut location_printer);
-            location_printer.indent(prefix.get_sections(), false);
+            location_printer.indent(&prefix.sections, false);
             printer.append(location_printer);
         }
 
@@ -175,7 +144,7 @@ impl<'a> Printable<'a> for HeaderBlock<'a> {
             let mut location_printer = printer.derive();
 
             self.location.print(&mut location_printer);
-            location_printer.indent(prefix.get_sections(), false);
+            location_printer.indent(&prefix.sections, false);
             printer.append(location_printer);
         }
 
@@ -205,6 +174,21 @@ impl<'a> Printable<'a> for HeaderBlock<'a> {
 
             printer.push_styled_text(Cow::Owned(thread), Style::new().bold());
         }
+
+        // Add extra messages.
+        let prefix = TextBlock::new_plain(Cow::Borrowed("   "));
+        for message in &self.extra_messages {
+            printer.push_styled_text(
+                Cow::Borrowed(concatcp!("\n ", NEW_LINE_RIGHT, " ")),
+                Style::new().bold().fg(printer.level.color()),
+            );
+
+            let mut location_printer = printer.derive();
+
+            message.print(&mut location_printer);
+            location_printer.indent(&prefix.sections, false);
+            printer.append(location_printer);
+        }
     }
 }
 
@@ -230,42 +214,32 @@ mod tests {
     fn test_plain() {
         // Empty
         let log = HeaderBlock::new();
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "ERROR");
 
         // Code
         let log = HeaderBlock::new().code("c-xxxxx");
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "ERROR[c-xxxxx]");
 
         // Title
         let log = HeaderBlock::new().title("This is\na title");
-        let text = log
-            .print_to_string(LogLevel::debug(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::debug(), PrinterFormat::Plain);
 
         println!("{}", text);
         assert_eq!(text, "DEBUG This is\n      a title");
 
         // Location
         let log = HeaderBlock::new().location(TextBlock::new_plain("src/blocks/\n/header.rs:3:26"));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "ERROR\n ↪ in src/blocks/\n      /header.rs:3:26");
 
         // Date
         let log = HeaderBlock::new().show_date(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
         let date = &text[14..];
 
         assert_eq!(text, format!("ERROR\n ↪ at {date}"));
@@ -276,11 +250,15 @@ mod tests {
             .unwrap_or("undefined")
             .to_string();
         let log = HeaderBlock::new().show_thread(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, format!("ERROR\n ↪ in thread {thread}"));
+
+        // Extra messages
+        let log = HeaderBlock::new().add_extra_message("Line1\nLine2");
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
+
+        assert_eq!(text, format!("ERROR\n ↪ Line1\n   Line2"));
 
         // All
         let log = HeaderBlock::new()
@@ -288,16 +266,15 @@ mod tests {
             .code("c-xxxxx")
             .location(TextBlock::new_plain("src/blocks/header.rs:3:26"))
             .show_date(true)
-            .show_thread(true);
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+            .show_thread(true)
+            .add_extra_message("Line1\nLine2");
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
         let date = &text[79..][..24];
 
         assert_eq!(
             text,
             format!(
-                "ERROR[c-xxxxx] This is\n      a title\n ↪ in src/blocks/header.rs:3:26\n ↪ at {date}\n ↪ in thread {thread}"
+                "ERROR[c-xxxxx] This is\n      a title\n ↪ in src/blocks/header.rs:3:26\n ↪ at {date}\n ↪ in thread {thread}\n ↪ Line1\n   Line2"
             )
         );
     }
@@ -373,13 +350,24 @@ mod tests {
             format!("\u{1b}[1;31mERROR\n ↪ in thread \u{1b}[0m\u{1b}[1m{thread}\u{1b}[0m")
         );
 
+        // Extra messages
+        let log = HeaderBlock::new().add_extra_message("Line1\nLine2");
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
+
+        println!("{}", text);
+        assert_eq!(
+            text,
+            format!("\u{1b}[1;31mERROR\n ↪ \u{1b}[0mLine1\n   Line2")
+        );
+
         // All
         let log = HeaderBlock::new()
             .title("This is\na title")
             .code("c-xxxxx")
             .location(TextBlock::new_plain("src/blocks/header.rs:3:26"))
             .show_date(true)
-            .show_thread(true);
+            .show_thread(true)
+            .add_extra_message("Line1\nLine2");
         let text = log.print_to_string(LogLevel::error(), PrinterFormat::Styled);
         let date = &text[124..][..24];
 
@@ -387,7 +375,7 @@ mod tests {
         assert_eq!(
             text,
             format!(
-                "\u{1b}[1;31mERROR\u{1b}[0m\u{1b}[1m[c-xxxxx] \u{1b}[0mThis is\n      a title\n\u{1b}[1;31m ↪ in \u{1b}[0msrc/blocks/header.rs:3:26\n\u{1b}[1;31m ↪ at \u{1b}[0m\u{1b}[1m{date}\n\u{1b}[0m\u{1b}[1;31m ↪ in thread \u{1b}[0m\u{1b}[1m{thread}\u{1b}[0m"
+                "\u{1b}[1;31mERROR\u{1b}[0m\u{1b}[1m[c-xxxxx] \u{1b}[0mThis is\n      a title\n\u{1b}[1;31m ↪ in \u{1b}[0msrc/blocks/header.rs:3:26\n\u{1b}[1;31m ↪ at \u{1b}[0m\u{1b}[1m{date}\n\u{1b}[0m\u{1b}[1;31m ↪ in thread \u{1b}[0m\u{1b}[1m{thread}\n\u{1b}[0m\u{1b}[1;31m ↪ \u{1b}[0mLine1\n   Line2"
             )
         );
     }

@@ -8,7 +8,7 @@ use yansi::Style;
 /// A block that prints a formated text to the terminal.
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct TextBlock<'a> {
-    sections: SmallVec<[TextSection<'a>; 3]>,
+    pub sections: SmallVec<[TextSection<'a>; 3]>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -43,12 +43,6 @@ impl<'a> TextBlock<'a> {
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.sections.is_empty()
-    }
-
-    /// Returns the sections of the text block.
-    #[inline(always)]
-    pub fn get_sections(&self) -> &[TextSection<'a>] {
-        &self.sections
     }
 
     // METHODS ----------------------------------------------------------------
@@ -175,9 +169,7 @@ mod tests {
             .add_styled_text("This is\na test", Style::new().bold().yellow())
             .add_plain_text("- plain")
             .add_styled_text(" - styled", Style::new().bold().red());
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "This is\na test- plain - styled");
     }

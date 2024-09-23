@@ -9,9 +9,9 @@ use crate::{LogContent, LogLevel};
 /// A configured log.
 #[derive(Debug, Clone)]
 pub struct Log<'a> {
-    level: LogLevel,
-    content: LogContent<'a>,
-    cause: Option<Box<Log<'a>>>,
+    pub level: LogLevel,
+    pub content: LogContent<'a>,
+    pub cause: Option<Box<Log<'a>>>,
 }
 
 impl<'a> Log<'a> {
@@ -51,40 +51,7 @@ impl<'a> Log<'a> {
         Self::new(LogLevel::error())
     }
 
-    // GETTERS ----------------------------------------------------------------
-
-    /// Returns the log level.
-    pub fn level(&self) -> LogLevel {
-        self.level
-    }
-
-    /// Returns the log content.
-    pub fn content(&self) -> &LogContent<'a> {
-        &self.content
-    }
-
-    /// Returns a mutable reference to the log content.
-    pub fn content_mut(&mut self) -> &mut LogContent<'a> {
-        &mut self.content
-    }
-
-    /// Returns the cause of this log.
-    pub fn cause(&self) -> &Option<Box<Log<'a>>> {
-        &self.cause
-    }
-
-    /// Returns a mutable reference to the cause of this log.
-    pub fn cause_mut(&mut self) -> &mut Option<Box<Log<'a>>> {
-        &mut self.cause
-    }
-
-    // GETTERS ----------------------------------------------------------------
-
-    /// Sets the level of this log.
-    pub fn set_level<F>(mut self, level: LogLevel) -> Self {
-        self.level = level;
-        self
-    }
+    // SETTERS ----------------------------------------------------------------
 
     /// Sets the cause of this log.
     pub fn set_cause<F>(mut self, builder: F) -> Self

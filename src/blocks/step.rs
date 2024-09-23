@@ -13,9 +13,9 @@ use yansi::Style;
 /// A block that prints a section of a document.
 #[derive(Default, Debug, Clone)]
 pub struct StepsBlock<'a> {
-    title: TextBlock<'a>,
-    final_message: TextBlock<'a>,
-    steps: Box<LogContent<'a>>,
+    pub title: TextBlock<'a>,
+    pub final_message: TextBlock<'a>,
+    pub steps: Box<LogContent<'a>>,
 }
 
 impl<'a> StepsBlock<'a> {
@@ -35,7 +35,7 @@ impl<'a> StepsBlock<'a> {
     /// Returns the maximum line to print.
     fn max_line(&self) -> usize {
         self.steps
-            .blocks()
+            .blocks
             .iter()
             .filter_map(|v| match v {
                 LogBlock::Code(v) => Some(v.max_line()),
@@ -45,43 +45,7 @@ impl<'a> StepsBlock<'a> {
             .unwrap_or(1)
     }
 
-    /// Returns the title.
-    #[inline(always)]
-    pub fn get_title(&self) -> &TextBlock<'a> {
-        &self.title
-    }
-
-    /// Returns a mutable reference to the title.
-    #[inline(always)]
-    pub fn get_title_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.title
-    }
-
-    /// Returns the final message.
-    #[inline(always)]
-    pub fn get_final_message(&self) -> &TextBlock<'a> {
-        &self.final_message
-    }
-
-    /// Returns a mutable reference to the final message.
-    #[inline(always)]
-    pub fn get_final_message_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.final_message
-    }
-
-    /// Returns the steps.
-    #[inline(always)]
-    pub fn get_steps(&self) -> &LogContent<'a> {
-        &self.steps
-    }
-
-    /// Returns a mutable reference to the steps.
-    #[inline(always)]
-    pub fn get_steps_mut(&mut self) -> &mut LogContent<'a> {
-        &mut self.steps
-    }
-
-    // SETTERS ----------------------------------------------------------------
+    // BUILDERS ---------------------------------------------------------------
 
     /// Sets the title.
     #[inline(always)]
@@ -97,21 +61,14 @@ impl<'a> StepsBlock<'a> {
         self
     }
 
-    /// Sets the steps.
+    /// Adds a new step.
     #[inline(always)]
-    pub fn steps(mut self, steps: LogContent<'a>) -> Self {
-        self.steps = Box::new(steps);
+    pub fn add_step(mut self, block: impl Into<LogBlock<'a>>) -> Self {
+        self.steps.blocks.push(block.into());
         self
     }
 
     // METHODS ----------------------------------------------------------------
-
-    /// Adds a new step.
-    #[inline(always)]
-    pub fn add_step(mut self, block: impl Into<LogBlock<'a>>) -> Self {
-        self.steps.blocks_mut().push(block.into());
-        self
-    }
 
     /// Makes this type owned, i.e. changing the lifetime to `'static`.
     pub fn make_owned(self) -> StepsBlock<'static> {
@@ -148,7 +105,7 @@ impl<'a> Printable<'a> for StepsBlock<'a> {
             let mut title_printer = printer.derive();
 
             self.title.print(&mut title_printer);
-            title_printer.indent(title_prefix.get_sections(), false);
+            title_printer.indent(&title_prefix.sections, false);
             printer.append(title_printer);
         } else {
             printer.push_styled_text(
@@ -158,7 +115,7 @@ impl<'a> Printable<'a> for StepsBlock<'a> {
         }
 
         // Print steps.
-        for block in self.steps.blocks() {
+        for block in &self.steps.blocks {
             let print_start = !matches!(block, LogBlock::Separator(_));
 
             if print_start {
@@ -193,7 +150,7 @@ impl<'a> Printable<'a> for StepsBlock<'a> {
                 }
             }
 
-            block_printer.indent(block_prefix.get_sections(), false);
+            block_printer.indent(&block_prefix.sections, false);
             printer.append(block_printer);
         }
 
@@ -217,7 +174,7 @@ impl<'a> Printable<'a> for StepsBlock<'a> {
             let mut message_printer = printer.derive();
 
             self.final_message.print(&mut message_printer);
-            message_printer.indent(message_prefix.get_sections(), false);
+            message_printer.indent(&message_prefix.sections, false);
             printer.append(message_printer);
         } else {
             printer.push_styled_text(

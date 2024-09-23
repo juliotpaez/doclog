@@ -12,7 +12,7 @@ use yansi::Style;
 /// ```
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct NoteBlock<'a> {
-    text: TextBlock<'a>,
+    pub text: TextBlock<'a>,
 }
 
 impl<'a> NoteBlock<'a> {
@@ -24,21 +24,7 @@ impl<'a> NoteBlock<'a> {
         Self::default()
     }
 
-    // GETTERS ----------------------------------------------------------------
-
-    /// Returns the text.
-    #[inline(always)]
-    pub fn get_text(&self) -> &TextBlock<'a> {
-        &self.text
-    }
-
-    /// Returns a mutable reference to the text.
-    #[inline(always)]
-    pub fn get_text_mut(&mut self) -> &mut TextBlock<'a> {
-        &mut self.text
-    }
-
-    // SETTERS ----------------------------------------------------------------
+    // BUILDERS ---------------------------------------------------------------
 
     /// Sets the text.
     #[inline(always)]
@@ -91,9 +77,7 @@ mod tests {
     fn test_plain() {
         let log = NoteBlock::new()
             .text(TextBlock::new().add_styled_text("NOTE", Style::new().underline().yellow()));
-        let text = log
-            .print_to_string(LogLevel::error(), PrinterFormat::Plain)
-            .to_string();
+        let text = log.print_to_string(LogLevel::error(), PrinterFormat::Plain);
 
         assert_eq!(text, "= NOTE");
     }
